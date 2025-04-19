@@ -13,6 +13,7 @@
 #include "../../flamenco/leaders/fd_leaders.h"
 #include "../../flamenco/runtime/fd_blockstore.h"
 #include "../../util/net/fd_net_headers.h"
+#include "../rabbitmq/fd_rabbitmq_producer.h"
 
 #include <linux/unistd.h>
 
@@ -188,6 +189,8 @@ typedef struct {
 
   fd_blockstore_t   blockstore_ljoin;
   fd_blockstore_t * blockstore;
+
+  fd_rabbitmq_clt_t rclt;
 
   struct {
     fd_histf_t contact_info_cnt[ 1 ];
@@ -543,6 +546,16 @@ send_shred( fd_shred_ctx_t                 * ctx,
   ctx->net_out_chunk = fd_dcache_compact_next( ctx->net_out_chunk, pkt_sz, ctx->net_out_chunk0, ctx->net_out_wmark );
 }
 
+static inline void
+rabbitmq_send_shred( fd_shred_ctx_t                 * ctx,
+                     fd_shred_t const               * shred ) {
+  int is_data = !fd_shred_is_data( fd_shred_type( shred->variant ) );
+  if (!is_data) return;
+  int ret = rabbitmq_publish(ctx->rclt, (uchar *)shred, FD_SHRED_MIN_SZ);
+  if (ret < 0)
+    FD_LOG_WARNING(("rabbitmq_publish: %s", amqp_error_string2(ret)));
+}
+
 static void
 after_frag( fd_shred_ctx_t *    ctx,
             ulong               in_idx,
@@ -764,7 +777,10 @@ after_frag( fd_shred_ctx_t *    ctx,
   if( FD_UNLIKELY( !dests ) ) return;
 
   /* Send only the ones we didn't receive. */
+  FD_LOG_INFO(("sending shreds %ld", k));
   for( ulong i=0UL; i<k; i++ ) {
+    /* send shreds also on rabbitmq */
+    rabbitmq_send_shred(ctx, new_shreds[i]);
     send_shred( ctx, new_shreds[ i ], ctx->adtl_dest, ctx->tsorig );
     for( ulong j=0UL; j<*max_dest_cnt; j++ ) send_shred( ctx, new_shreds[ i ], fd_shred_dest_idx_to_dest( sdest, dests[ j*out_stride+i ]), ctx->tsorig );
   }
@@ -1009,6 +1025,9 @@ unprivileged_init( fd_topo_t *      topo,
 
   for( ulong i=0UL; i<FD_SHRED_FEATURES_ACTIVATION_SLOT_CNT; i++ )
     ctx->features_activation->slots[i] = FD_SHRED_FEATURES_ACTIVATION_SLOT_DISABLED;
+  
+  /* initialize rabbitmq connection */
+  ctx->rclt = init_rclt(tile->rabbitmq.hostname, tile->rabbitmq.port);
 
   ulong scratch_top = FD_SCRATCH_ALLOC_FINI( l, 1UL );
   if( FD_UNLIKELY( scratch_top > (ulong)scratch + scratch_footprint( tile ) ) )

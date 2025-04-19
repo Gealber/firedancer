@@ -207,6 +207,11 @@ struct fd_config {
   } rpc;
 
   struct {
+    ushort port;
+    char   hostname[ 16 ];
+  } rabbitmq;
+
+  struct {
     int  enabled;
     int  incremental_snapshots;
     uint full_snapshot_interval_slots;

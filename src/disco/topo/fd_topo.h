@@ -395,6 +395,11 @@ typedef struct {
     } rpcserv;
 
     struct {
+      ushort port;
+      char hostname[ 16 ];
+    } rabbitmq;
+
+    struct {
       ulong full_interval;
       ulong incremental_interval;
       char  out_dir[ PATH_MAX ];

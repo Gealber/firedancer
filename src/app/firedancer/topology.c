@@ -803,6 +803,9 @@ fd_topo_initialize( config_t * config ) {
       tile->rpcserv.tpu_port = config->tiles.quic.regular_transaction_listen_port;
       tile->rpcserv.tpu_ip_addr = config->tiles.net.ip_addr;
       strncpy( tile->rpcserv.identity_key_path, config->consensus.identity_path, sizeof(tile->rpcserv.identity_key_path) );
+    } else if( FD_UNLIKELY( !strcmp( tile->name, "rabbitmq" ) ) ) {
+      strncpy( tile->rabbitmq.hostname, config->rabbitmq.hostname, sizeof(tile->rabbitmq.hostname ) );
+      tile->rabbitmq.port = config->rabbitmq.port;
     } else if( FD_UNLIKELY( !strcmp( tile->name, "batch" ) ) ) {
       tile->batch.full_interval        = config->tiles.batch.full_interval;
       tile->batch.incremental_interval = config->tiles.batch.incremental_interval;

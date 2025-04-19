@@ -259,6 +259,9 @@ fdctl_pod_to_cfg( config_t * config,
   CFG_POP      ( bool,   rpc.pubsub_enable_vote_subscription              );
   CFG_POP      ( bool,   rpc.bigtable_ledger_storage                      );
 
+  CFG_POP      ( ushort, rabbitmq.port                                    );
+  CFG_POP      ( cstr,   rabbitmq.hostname                                );
+
   CFG_POP      ( bool,   snapshots.enabled                                );
   CFG_POP      ( bool,   snapshots.incremental_snapshots                  );
   CFG_POP      ( uint,   snapshots.full_snapshot_interval_slots           );
