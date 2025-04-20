@@ -206,8 +206,6 @@ fd_main( int     argc,
 
   fd_main_init( &argc, &argv, &config, NULL, default_config1, default_config1_sz, default_config2, default_config2_sz, topo_init );
 
-  FD_LOG_INFO(("RABBITMQ_CONFIG: %s %s %s %d",   config.rabbitmq.hostname, config.rabbitmq.username, config.rabbitmq.password, config.rabbitmq.port));
-
   if( FD_UNLIKELY( !action ) ) {
     for( ulong i=0UL; ACTIONS[ i ]; i++ ) {
       action_t * action = ACTIONS[ i ];
