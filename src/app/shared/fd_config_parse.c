@@ -259,6 +259,11 @@ fdctl_pod_to_cfg( config_t * config,
   CFG_POP      ( bool,   rpc.pubsub_enable_vote_subscription              );
   CFG_POP      ( bool,   rpc.bigtable_ledger_storage                      );
 
+  CFG_POP      ( ushort, rabbitmq.port                                    );
+  CFG_POP      ( cstr,   rabbitmq.hostname                                );
+  CFG_POP      ( cstr,   rabbitmq.username                                );
+  CFG_POP      ( cstr,   rabbitmq.password                                );
+
   CFG_POP      ( bool,   snapshots.enabled                                );
   CFG_POP      ( bool,   snapshots.incremental_snapshots                  );
   CFG_POP      ( uint,   snapshots.full_snapshot_interval_slots           );
@@ -325,6 +330,7 @@ fdctl_pod_to_cfg( config_t * config,
 
   CFG_POP      ( uint,   tiles.shred.max_pending_shred_sets               );
   CFG_POP      ( ushort, tiles.shred.shred_listen_port                    );
+  CFG_POP      ( cstr,   tiles.shred.additional_shred_destination         );
 
   CFG_POP      ( cstr,   tiles.metric.prometheus_listen_address           );
   CFG_POP      ( ushort, tiles.metric.prometheus_listen_port              );
@@ -422,7 +428,8 @@ fdctl_pod_to_cfg( config_t * config,
   CFG_POP      ( cstr,   tiles.restart.wen_restart_coordinator            );
   CFG_POP      ( cstr,   tiles.restart.genesis_hash                       );
 
-  CFG_POP      ( bool,   tiles.archiver.playback                          );
+  CFG_POP      ( bool,   tiles.archiver.enabled                           );
+  CFG_POP      ( cstr,   tiles.archiver.archiver_path                     );
 
 # undef CFG_POP
 # undef CFG_ARRAY
@@ -463,6 +470,11 @@ fdctl_cfg_validate( config_t * cfg ) {
   CFG_HAS_NON_EMPTY( ledger.snapshot_archive_format );
 
   CFG_HAS_NON_ZERO( gossip.port );
+
+  /* RABBIT MQ */
+  CFG_HAS_NON_EMPTY( rabbitmq.hostname );
+  CFG_HAS_NON_EMPTY( rabbitmq.username );
+  CFG_HAS_NON_EMPTY( rabbitmq.password );
 
   CFG_HAS_NON_ZERO( snapshots.full_snapshot_interval_slots );
   CFG_HAS_NON_ZERO( snapshots.incremental_snapshot_interval_slots );

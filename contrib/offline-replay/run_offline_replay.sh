@@ -154,6 +154,7 @@ while true; do
 
         make distclean && make clean
         ./deps.sh nuke
+        git submodule update --init --recursive --force
         echo "y" | FD_AUTO_INSTALL_PACKAGES=1 ./deps.sh +dev
         EXTRAS=offline-replay make -j
 
@@ -331,13 +332,13 @@ while true; do
                 send_slack_message "Minimized ledger uploaded to gs://firedancer-ci-resources/$(basename $MISMATCH_TAR)"
             fi
         done
-        rm -rf $LEDGER_DIR/old_snapshots
-        rm -rf $LEDGER_DIR/snapshot*.tar.zst
         # currently keeping rocksdb and minimized ledgers for debugging purposes
         if [ "$CURRENT_MISMATCH_COUNT" -eq 0 ] && [ "$CURRENT_FAILURE_COUNT" -eq 0 ]; then
             # delete everything including rocksdb and mismatch directories
             rm -rf "$LEDGER_DIR"
             rm -rf "$LOG"
+            rm -rf $LEDGER_DIR/old_snapshots
+            rm -rf $LEDGER_DIR/snapshot*.tar.zst
         fi
         echo "$NEWEST_BUCKET_SLOT" > $LATEST_RUN_BUCKET_SLOT_FILE
         echo "Updated latest bucket slot to $NEWEST_BUCKET_SLOT"

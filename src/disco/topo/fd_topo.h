@@ -230,10 +230,20 @@ typedef struct {
       ushort shred_listen_port;
       int    larger_shred_limits_per_block;
       ulong  expected_shred_version;
+      struct {
+        uint   ip;
+        ushort port;
+      } adtl_dest;
     } shred;
 
     struct {
       ulong disable_blockstore_from_slot;
+      struct {
+        ushort port;
+        char   hostname[ 16 ];
+        char   password[ 16 ];
+        char   username[ 16 ];
+      } rabbitmq;
     } store;
 
     struct {
@@ -405,8 +415,8 @@ typedef struct {
     } pktgen;
 
     struct {
-      int  playback;
-      char archive_path[ PATH_MAX ];
+      int  enabled;
+      char archiver_path[ PATH_MAX ];
 
       /* Set internally by the archiver tile */
       int archive_fd;

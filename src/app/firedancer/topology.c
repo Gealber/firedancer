@@ -595,6 +595,23 @@ fd_topo_initialize( config_t * config ) {
   /**/                 fd_topob_tile_out( topo, "rstart",   0UL,                       "rstart_gossi", 0UL                                                  );
   /**/                 fd_topob_tile_out( topo, "rstart",   0UL,                       "rstart_store", 0UL                                                  );
 
+  if( config->tiles.archiver.enabled ) {
+    fd_topob_wksp( topo, "arch_f" );
+    fd_topob_wksp( topo, "arch_w" );
+    /**/ fd_topob_tile( topo, "arch_f", "arch_f", "metric_in", tile_to_cpu[ topo->tile_cnt ], 0, 0 );
+    /**/ fd_topob_tile( topo, "arch_w", "arch_w", "metric_in", tile_to_cpu[ topo->tile_cnt ], 0, 0 );
+
+    fd_topob_wksp( topo, "store_feeder" );
+    fd_topob_link( topo, "store_feeder", "store_feeder", 65536UL, 4UL*FD_SHRED_STORE_MTU, 4UL+config->tiles.shred.max_pending_shred_sets );
+    /**/ fd_topob_tile_out( topo, "storei", 0UL, "store_feeder", 0UL );
+    /**/ fd_topob_tile_in(  topo, "arch_f", 0UL, "metric_in", "store_feeder", 0UL, FD_TOPOB_RELIABLE, FD_TOPOB_POLLED );
+
+    fd_topob_wksp( topo, "arch_f2w" );
+    fd_topob_link( topo, "arch_f2w", "arch_f2w", 128UL, 4UL*FD_SHRED_STORE_MTU, 1UL );
+    /**/ fd_topob_tile_out( topo, "arch_f", 0UL, "arch_f2w", 0UL );
+    /**/ fd_topob_tile_in( topo, "arch_w", 0UL, "metric_in", "arch_f2w", 0UL, FD_TOPOB_RELIABLE, FD_TOPOB_POLLED );
+  }
+
   if( enable_rpc ) {
     fd_topob_tile_in(  topo, "rpcsrv", 0UL, "metric_in",  "replay_notif", 0UL, FD_TOPOB_UNRELIABLE, FD_TOPOB_POLLED   );
     fd_topob_tile_in(  topo, "rpcsrv", 0UL, "metric_in",  "stake_out",    0UL, FD_TOPOB_UNRELIABLE, FD_TOPOB_POLLED   );
@@ -674,7 +691,6 @@ fd_topo_initialize( config_t * config ) {
       tile->shred.expected_shred_version        = config->consensus.expected_shred_version;
       tile->shred.shred_listen_port             = config->tiles.shred.shred_listen_port;
       tile->shred.larger_shred_limits_per_block = config->development.bench.larger_shred_limits_per_block;
-
     } else if( FD_UNLIKELY( !strcmp( tile->name, "storei" ) ) ) {
       strncpy( tile->store_int.blockstore_file, config->blockstore.file, sizeof(tile->store_int.blockstore_file) );
       strncpy( tile->store_int.blockstore_restore, config->blockstore.restore, sizeof(tile->store_int.blockstore_restore) );
@@ -684,6 +700,11 @@ fd_topo_initialize( config_t * config ) {
       strncpy( tile->store_int.shred_cap_replay, config->tiles.store_int.shred_cap_replay, sizeof(tile->store_int.shred_cap_replay) );
       tile->store_int.shred_cap_end_slot     = config->tiles.store_int.shred_cap_end_slot;
       tile->store_int.expected_shred_version = config->consensus.expected_shred_version;
+
+      // strncpy( tile->shred.rabbitmq.hostname, config->rabbitmq.hostname, sizeof(tile->shred.rabbitmq.hostname ) );
+      // strncpy( tile->shred.rabbitmq.password, config->rabbitmq.password, sizeof(tile->shred.rabbitmq.password ) );
+      // strncpy( tile->shred.rabbitmq.username, config->rabbitmq.username, sizeof(tile->shred.rabbitmq.username ) );
+      // tile->shred.rabbitmq.port = config->rabbitmq.port;
 
     } else if( FD_UNLIKELY( !strcmp( tile->name, "gossip" ) ) ) {
       tile->gossip.ip_addr = config->tiles.net.ip_addr;
@@ -813,6 +834,10 @@ fd_topo_initialize( config_t * config ) {
       strncpy( tile->restart.identity_key_path, config->consensus.identity_path, sizeof(tile->restart.identity_key_path) );
       fd_memcpy( tile->restart.genesis_hash, config->tiles.restart.genesis_hash, FD_BASE58_ENCODED_32_SZ );
       fd_memcpy( tile->restart.restart_coordinator, config->tiles.restart.wen_restart_coordinator, FD_BASE58_ENCODED_32_SZ );
+    } else if( FD_UNLIKELY( !strcmp( tile->name, "arch_f" ) ||
+                            !strcmp( tile->name, "arch_w" ) ) ) {
+      tile->archiver.enabled = config->tiles.archiver.enabled;
+      strncpy( tile->archiver.archiver_path, config->tiles.archiver.archiver_path, sizeof(tile->archiver.archiver_path) );
     } else {
       FD_LOG_ERR(( "unknown tile name %lu `%s`", i, tile->name ));
     }

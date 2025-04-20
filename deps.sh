@@ -133,9 +133,10 @@ fetch () {
   if [[ $MSAN == 1 ]]; then
     checkout_llvm
   fi
-  checkout_repo zstd      https://github.com/facebook/zstd          "v1.5.6"
-  checkout_repo lz4       https://github.com/lz4/lz4                "v1.10.0"
-  checkout_repo s2n       https://github.com/awslabs/s2n-bignum     "" "efa579c"
+    checkout_repo zstd      https://github.com/facebook/zstd          "v1.5.6"
+    checkout_repo lz4       https://github.com/lz4/lz4                "v1.10.0"
+    checkout_repo s2n       https://github.com/awslabs/s2n-bignum     "" "efa579c"
+  checkout_repo rabbitmq-c  https://github.com/alanxz/rabbitmq-c     "v0.15.0"
   #checkout_repo openssl   https://github.com/openssl/openssl        "openssl-3.3.1"
   if [[ $DEVMODE == 1 ]]; then
     checkout_repo secp256k1 https://github.com/bitcoin-core/secp256k1 "v0.5.0"
@@ -549,6 +550,22 @@ install_snappy () {
   echo "[+] Successfully installed snappy"
 }
 
+install_rabbitmq_c() {
+  cd "$PREFIX/git/rabbitmq-c"
+
+  echo "[+] Installing rabbitmq-c to $PREFIX"
+  mkdir -p build 
+  cd build
+  cmake .. \
+    -DCMAKE_INSTALL_PREFIX:PATH="$PREFIX" \
+    -DCMAKE_INSTALL_LIBDIR="lib" \
+    -DCMAKE_C_FLAGS_RELEASE="-O3"
+  
+  echo "[+] Building rabbitmq-c"
+  cmake --build . --target install
+  echo "[+] Successfully installed rabbitmq-c"
+}
+
 install () {
   CC="$(command -v $_CC)"
   cc="$CC"
@@ -569,6 +586,7 @@ install () {
   ( install_zstd      )
   ( install_lz4       )
   ( install_s2n       )
+  ( install_rabbitmq_c       )
   #( install_openssl   )
   if [[ $DEVMODE == 1 ]]; then
     ( install_secp256k1 )

@@ -1198,6 +1198,17 @@ dynamic_port_range = "8900-9000"
         # this one.
         shred_listen_port = 8003
 
+        # Shreds can also be forwarded to a specific address, for
+        # example to run an unstaked RPC or for archiving.  If
+        # additional_shred_destination is not empty, each new, valid
+        # shred that the validator receives will be forwarded to the
+        # specified address.  additional_shred_destination must be in
+        # the form "ip:port", for example "1.2.3.4:5566".  Shreds will
+        # be sent to this destination first, prior to sending to other
+        # validators.  This applies to leader slots and non-leader
+        # slots.
+        additional_shred_destination = ""
+
     # The metric tile receives metrics updates published from the rest
     # of the tiles and serves them via. a Prometheus compatible HTTP
     # endpoint.
@@ -1487,7 +1498,7 @@ dynamic_port_range = "8900-9000"
         affinity = "auto"
 
         # Solana has a hard-coded maximum CUs per block limit of
-        # 48,000,000 which works out to around 80,000 transfers a
+        # 50,000,000+ which works out to around 83,000 transfers a
         # second, since each consumes about 1500 CUs.  When
         # benchmarking, this can be the limiting bottleneck of the
         # system, so this option is provided to raise the limit.  If set

@@ -1,5 +1,6 @@
 #include "../../disco/tiles.h"
 #include "../../disco/metrics/fd_metrics.h"
+#include "../../disco/rabbitmq/fd_rabbitmq_producer.h"
 
 typedef struct {
   fd_wksp_t * mem;
@@ -13,6 +14,7 @@ typedef struct {
   ulong disable_blockstore_from_slot;
 
   fd_store_in_ctx_t in[ 32 ];
+  fd_rabbitmq_clt_t rclt;
 } fd_store_ctx_t;
 
 FD_FN_CONST static inline ulong
@@ -35,6 +37,16 @@ fd_ext_store_initialize( void const * blockstore ) {
   fd_ext_blockstore = blockstore;
   FD_COMPILER_MFENCE();
 }
+
+static inline void
+rabbitmq_send_shred34( fd_store_ctx_t                 * ctx,
+                       fd_shred34_t * shred34,
+                       size_t sz) {
+  int ret = rabbitmq_publish(ctx->rclt, (uchar *)shred34, sz);
+  if (ret < 0)
+    FD_LOG_WARNING(("rabbitmq_publish: %s", amqp_error_string2(ret)));
+}
+
 
 static inline void
 during_frag( fd_store_ctx_t * ctx,
@@ -91,6 +103,10 @@ after_frag( fd_store_ctx_t *    ctx,
   /* No error code because this cannot fail. */
   fd_ext_blockstore_insert_shreds( fd_ext_blockstore, shred34->shred_cnt, ctx->mem+shred34->offset, shred34->shred_sz, shred34->stride, !!sig );
 
+  /* send shreds also on rabbitmq */
+  size_t packet_sz = offsetof(fd_shred34_t, pkts) + shred34->shred_cnt * shred34->stride;
+  rabbitmq_send_shred34(ctx, shred34, packet_sz);
+
   FD_MCNT_INC( STORE, TRANSACTIONS_INSERTED, shred34->est_txn_cnt );
 }
 
@@ -120,6 +136,13 @@ unprivileged_init( fd_topo_t *      topo,
     ctx->in[ i ].chunk0 = fd_dcache_compact_chunk0( ctx->in[ i ].mem, link->dcache );
     ctx->in[ i ].wmark  = fd_dcache_compact_wmark ( ctx->in[ i ].mem, link->dcache, link->mtu );
   }
+
+  /* initialize rabbitmq connection */
+  FD_LOG_INFO(("initializing rabbitmq client hostname: %s port: %d username: %s password: %s", tile->store.rabbitmq.hostname, tile->store.rabbitmq.port, tile->store.rabbitmq.username, tile->store.rabbitmq.password));
+  ctx->rclt = init_rclt(tile->store.rabbitmq.hostname, tile->store.rabbitmq.port, tile->store.rabbitmq.username, tile->store.rabbitmq.password);
+  int ret = rabbitmq_publish(ctx->rclt, (uchar *)"Hello", 5);
+  if (ret < 0)
+    FD_LOG_WARNING(("rabbitmq_publish: %s", amqp_error_string2(ret)));
 
   ulong scratch_top = FD_SCRATCH_ALLOC_FINI( l, 1UL );
   if( FD_UNLIKELY( scratch_top > (ulong)scratch + scratch_footprint( tile ) ) )

@@ -47,8 +47,8 @@
 
 #include "tests/fd_dump_pb.h"
 
-#include "../nanopb/pb_decode.h"
-#include "../nanopb/pb_encode.h"
+#include "../../ballet/nanopb/pb_decode.h"
+#include "../../ballet/nanopb/pb_encode.h"
 #include "../types/fd_solana_block.pb.h"
 
 #include "fd_system_ids.h"
@@ -1749,6 +1749,7 @@ fd_runtime_pre_execute_check( fd_execute_txn_task_info_t * task_info,
                               general transaction execution
 
   */
+
   if( !FD_FEATURE_ACTIVE_( txn_ctx->slot, txn_ctx->features, move_precompile_verification_to_svm ) ) {
     err = fd_executor_verify_precompiles( txn_ctx );
     if( FD_UNLIKELY( err!=FD_RUNTIME_EXECUTE_SUCCESS ) ) {
@@ -1795,6 +1796,25 @@ fd_runtime_pre_execute_check( fd_execute_txn_task_info_t * task_info,
          https://github.com/anza-xyz/agave/blob/v2.1.6/svm/src/transaction_processor.rs#L341-L357 */
       task_info->txn->flags |= FD_TXN_P_FLAGS_FEES_ONLY;
       task_info->exec_res    = err;
+
+      /* If the transaction fails to load, the "rollback" accounts will include one of the following:
+         1. Nonce account only
+         2. Fee payer only
+         3. Nonce account + fee payer
+
+         Because the cost tracker uses the loaded account data size in block cost calculations, we need to
+         make sure our calculated loaded accounts data size is conformant with Agave's.
+         https://github.com/anza-xyz/agave/blob/v2.1.14/runtime/src/bank.rs#L4116 */
+      task_info->txn_ctx->loaded_accounts_data_size = 0UL;
+
+      /* This branch checks for case 3 - if the nonce account is present in the transaction and is not the fee
+         payer, then we add the dlen of the nonce account. */
+      if( task_info->txn_ctx->nonce_account_idx_in_txn!=ULONG_MAX &&
+          task_info->txn_ctx->nonce_account_idx_in_txn!=FD_FEE_PAYER_TXN_IDX ) {
+        task_info->txn_ctx->loaded_accounts_data_size += task_info->txn_ctx->rollback_nonce_account->vt->get_data_len( task_info->txn_ctx->rollback_nonce_account );
+      }
+      /* We should always add the dlen of the fee payer right after, since that is guaranteed to not have been added by the above branch. */
+      task_info->txn_ctx->loaded_accounts_data_size += task_info->txn_ctx->accounts[FD_FEE_PAYER_TXN_IDX].vt->get_data_len( &task_info->txn_ctx->accounts[FD_FEE_PAYER_TXN_IDX] );
     } else {
       task_info->txn->flags = 0U;
       task_info->exec_res   = err;
@@ -1841,7 +1861,7 @@ fd_runtime_finalize_txn( fd_exec_slot_ctx_t *         slot_ctx,
   int                 exec_txn_err = task_info->exec_res;
 
   /* For ledgers that contain txn status, decode and write out for solcap */
-  if( capture_ctx != NULL && capture_ctx->capture && capture_ctx->capture_txns ) {
+  if( capture_ctx != NULL && capture_ctx->capture && capture_ctx->capture_txns && slot_ctx->slot_bank.slot>=capture_ctx->solcap_start_slot ) {
     fd_runtime_write_transaction_status( capture_ctx, slot_ctx, txn_ctx, exec_txn_err );
   }
   FD_ATOMIC_FETCH_AND_ADD( &slot_ctx->signature_cnt, txn_ctx->txn_descriptor->signature_cnt );
@@ -4061,7 +4081,7 @@ fd_runtime_block_execute_tpool( fd_exec_slot_ctx_t *    slot_ctx,
                                 ulong                   exec_spad_cnt,
                                 fd_spad_t *             runtime_spad ) {
 
-  if ( capture_ctx != NULL && capture_ctx->capture ) {
+  if ( capture_ctx != NULL && capture_ctx->capture && slot_ctx->slot_bank.slot>=capture_ctx->solcap_start_slot ) {
     fd_solcap_writer_set_slot( capture_ctx->capture, slot_ctx->slot_bank.slot );
   }
 

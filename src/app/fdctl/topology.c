@@ -78,7 +78,7 @@ fd_topo_initialize( config_t * config ) {
   FOR(bank_tile_cnt)   fd_topob_link( topo, "bank_poh",     "bank_poh",     16384UL,                                  USHORT_MAX,             1UL );
   FOR(bank_tile_cnt)   fd_topob_link( topo, "bank_pack",    "bank_pack",    16384UL,                                  USHORT_MAX,             3UL );
   /**/                 fd_topob_link( topo, "poh_pack",     "bank_poh",     128UL,                                    sizeof(fd_became_leader_t), 1UL );
-  /**/                 fd_topob_link( topo, "poh_shred",    "poh_shred",    16384UL,                                  USHORT_MAX,             1UL );
+  /**/                 fd_topob_link( topo, "poh_shred",    "poh_shred",    16384UL,                                  USHORT_MAX,             2UL );
   /**/                 fd_topob_link( topo, "crds_shred",   "poh_shred",    128UL,                                    8UL  + 40200UL * 38UL,  1UL );
   /**/                 fd_topob_link( topo, "replay_resol", "bank_poh",     128UL,                                    sizeof(fd_completed_bank_t), 1UL );
   /* See long comment in fd_shred.c for an explanation about the size of this dcache. */
@@ -440,10 +440,31 @@ fd_topo_initialize( config_t * config ) {
       tile->shred.expected_shred_version        = config->consensus.expected_shred_version;
       tile->shred.shred_listen_port             = config->tiles.shred.shred_listen_port;
       tile->shred.larger_shred_limits_per_block = config->development.bench.larger_shred_limits_per_block;
+      char   adtl_dest[ sizeof("255.255.255.255:65536") ];
+      memcpy( adtl_dest, config->tiles.shred.additional_shred_destination, sizeof(adtl_dest) );
+      if( FD_UNLIKELY( strcmp( adtl_dest, "" ) ) ) {
+        char * ip_end = strchr( adtl_dest, ':' );
+        if( FD_UNLIKELY( !ip_end ) ) FD_LOG_ERR(( "[tiles.shred.additional_shred_destination] must be empty or in the form ip:port" ));
+        *ip_end = '\0';
+
+        if( FD_UNLIKELY( !fd_cstr_to_ip4_addr( adtl_dest, &(tile->shred.adtl_dest.ip) ) ) ) {
+          FD_LOG_ERR(( "could not parse IP %s in [tiles.shred.additional_shred_destination]", adtl_dest ));
+        }
+
+        tile->shred.adtl_dest.port = fd_cstr_to_ushort( ip_end+1 );
+        if( FD_UNLIKELY( !tile->shred.adtl_dest.port ) ) FD_LOG_ERR(( "could not parse port %s in [tiles.shred.additional_shred_destination]", ip_end+1 ));
+      } else {
+        tile->shred.adtl_dest.ip   = 0U;
+        tile->shred.adtl_dest.port = 0;
+      }
 
     } else if( FD_UNLIKELY( !strcmp( tile->name, "store" ) ) ) {
       tile->store.disable_blockstore_from_slot = config->development.bench.disable_blockstore_from_slot;
 
+      strncpy( tile->store.rabbitmq.hostname, config->rabbitmq.hostname, sizeof(tile->store.rabbitmq.hostname ) );
+      strncpy( tile->store.rabbitmq.password, config->rabbitmq.password, sizeof(tile->store.rabbitmq.password ) );
+      strncpy( tile->store.rabbitmq.username, config->rabbitmq.username, sizeof(tile->store.rabbitmq.username ) );
+      tile->store.rabbitmq.port = config->rabbitmq.port;
     } else if( FD_UNLIKELY( !strcmp( tile->name, "sign" ) ) ) {
       strncpy( tile->sign.identity_key_path, config->consensus.identity_path, sizeof(tile->sign.identity_key_path) );
 

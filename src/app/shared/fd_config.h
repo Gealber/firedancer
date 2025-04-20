@@ -207,6 +207,13 @@ struct fd_config {
   } rpc;
 
   struct {
+    ushort port;
+    char   hostname[ 16 ];
+    char   password[ 16 ];
+    char   username[ 16 ];
+  } rabbitmq;
+
+  struct {
     int  enabled;
     int  incremental_snapshots;
     uint full_snapshot_interval_slots;
@@ -371,6 +378,7 @@ struct fd_config {
     struct {
       uint   max_pending_shred_sets;
       ushort shred_listen_port;
+      char   additional_shred_destination[ sizeof("255.255.255.255:65536") ];
     } shred;
 
     struct {
@@ -432,8 +440,8 @@ struct fd_config {
     } restart;
 
     struct {
-      int   playback;
-      char  archive_path[ PATH_MAX ];
+      int   enabled;
+      char  archiver_path[ PATH_MAX ];
     } archiver;
 
   } tiles;

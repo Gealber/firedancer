@@ -124,7 +124,7 @@
 #define FD_METRICS_COUNTER_TILE_BACKPRESSURE_COUNT_OFF  (7UL)
 #define FD_METRICS_COUNTER_TILE_BACKPRESSURE_COUNT_NAME "tile_backpressure_count"
 #define FD_METRICS_COUNTER_TILE_BACKPRESSURE_COUNT_TYPE (FD_METRICS_TYPE_COUNTER)
-#define FD_METRICS_COUNTER_TILE_BACKPRESSURE_COUNT_DESC "Number of times the times the tile has had to wait for one of more consumers to catch up to resume publishing."
+#define FD_METRICS_COUNTER_TILE_BACKPRESSURE_COUNT_DESC "Number of times the tile has had to wait for one of more consumers to catch up to resume publishing."
 #define FD_METRICS_COUNTER_TILE_BACKPRESSURE_COUNT_CVT  (FD_METRICS_CONVERTER_NONE)
 
 #define FD_METRICS_COUNTER_TILE_REGIME_DURATION_NANOS_OFF  (8UL)
@@ -153,7 +153,7 @@ extern const fd_metrics_meta_t FD_METRICS_ALL_LINK_IN[FD_METRICS_ALL_LINK_IN_TOT
 #define FD_METRICS_ALL_LINK_OUT_TOTAL (1UL)
 extern const fd_metrics_meta_t FD_METRICS_ALL_LINK_OUT[FD_METRICS_ALL_LINK_OUT_TOTAL];
 
-#define FD_METRICS_TOTAL_SZ (8UL*229UL)
+#define FD_METRICS_TOTAL_SZ (8UL*246UL)
 
 #define FD_METRICS_TILE_KIND_CNT 17
 extern const char * FD_METRICS_TILE_KIND_NAMES[FD_METRICS_TILE_KIND_CNT];

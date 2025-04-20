@@ -47,7 +47,7 @@ metric introduced.
     <gauge name="Status" summary="The current status of the tile. 0 is booting, 1 is running." />
     <gauge name="Heartbeat" summary="The last UNIX timestamp in nanoseconds that the tile heartbeated." />
     <gauge name="InBackpressure" summary="Whether the tile is currently backpressured or not, either 1 or 0." />
-    <counter name="BackpressureCount" summary="Number of times the times the tile has had to wait for one of more consumers to catch up to resume publishing." />
+    <counter name="BackpressureCount" summary="Number of times the tile has had to wait for one of more consumers to catch up to resume publishing." />
     <counter name="RegimeDurationNanos" enum="TileRegime" converter="nanoseconds" summary="Mutually exclusive and exhaustive duration of time the tile spent in each of the regimes." />
 </common>
 
@@ -362,8 +362,11 @@ metric introduced.
         <!-- Note: The switch from cost units to compute units here is deliberate.  Of the various types of cost units, only compute units can be rebated. -->
         <summary>The number of compute units rebated for each block pack produced.  Compute units are rebated when a transaction fails prior to execution or requests more compute units than it uses.</summary>
     </histogram>
-    <histogram name="CusNet" min="1000000" max="48000000">
+    <histogram name="CusNet" min="1000000" max="60000000">
         <summary>The net number of cost units (scheduled - rebated) in each block pack produced.</summary>
+    </histogram>
+    <histogram name="CusPct" min="0" max="100">
+        <summary>The percent of the total block cost limit used for each block pack produced.</summary>
     </histogram>
 
     <counter name="DeleteMissed" summary="Count of attempts to delete a transaction that wasn't found" />

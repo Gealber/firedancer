@@ -388,6 +388,13 @@ typedef struct {
      microblocks that the pack tile can publish in each slot. */
   ulong max_microblocks_per_slot;
 
+  /* Consensus-critical slot cost limits. */
+  struct {
+    ulong slot_max_cost;
+    ulong slot_max_vote_cost;
+    ulong slot_max_write_cost_per_acct;
+  } limits;
+
   /* The current slot and hashcnt within that slot of the proof of
      history, including hashes we have been producing in the background
      while waiting for our next leader slot. */
@@ -535,6 +542,9 @@ typedef struct {
   fd_histf_t first_microblock_delay[ 1 ];
   fd_histf_t slot_done_delay[ 1 ];
   fd_histf_t bundle_init_delay[ 1 ];
+
+  ulong features_activation_avail;
+  fd_shred_features_activation_t features_activation[1];
 } fd_poh_ctx_t;
 
 /* The PoH recorder is implemented in Firedancer but for now needs to
@@ -1002,6 +1012,10 @@ publish_became_leader( fd_poh_ctx_t * ctx,
   leader->epoch                   = epoch;
   leader->bundle->config[0]       = config[0];
 
+  leader->limits.slot_max_cost                = ctx->limits.slot_max_cost;
+  leader->limits.slot_max_vote_cost           = ctx->limits.slot_max_vote_cost;
+  leader->limits.slot_max_write_cost_per_acct = ctx->limits.slot_max_write_cost_per_acct;
+
   memcpy( leader->bundle->last_blockhash,     ctx->reset_hash,    32UL );
   memcpy( leader->bundle->tip_receiver_owner, tip_receiver_owner, 32UL );
 
@@ -1023,7 +1037,10 @@ CALLED_FROM_RUST void
 fd_ext_poh_begin_leader( void const * bank,
                          ulong        slot,
                          ulong        epoch,
-                         ulong        hashcnt_per_tick ) {
+                         ulong        hashcnt_per_tick,
+                         ulong        cus_block_limit,
+                         ulong        cus_vote_cost_limit,
+                         ulong        cus_account_cost_limit ) {
   fd_poh_ctx_t * ctx = fd_ext_poh_write_lock();
 
   FD_TEST( !ctx->current_leader_bank );
@@ -1074,6 +1091,24 @@ fd_ext_poh_begin_leader( void const * bank,
   ctx->microblocks_lower_bound = 0UL;
   ctx->cus_used                = 0UL;
   ctx->expect_microblock_idx   = 0UL;
+
+  ctx->limits.slot_max_cost                = cus_block_limit;
+  ctx->limits.slot_max_vote_cost           = cus_vote_cost_limit;
+  ctx->limits.slot_max_write_cost_per_acct = cus_account_cost_limit;
+
+  /* clamp and warn if we are underutilizing CUs */
+  if( FD_UNLIKELY( ctx->limits.slot_max_cost > FD_PACK_MAX_COST_PER_BLOCK_UPPER_BOUND ) ) {
+    FD_LOG_WARNING(( "Underutilizing protocol slot CU limit. protocol_limit=%lu validator_limit=%lu", ctx->limits.slot_max_cost, FD_PACK_MAX_COST_PER_BLOCK_UPPER_BOUND ));
+    ctx->limits.slot_max_cost = FD_PACK_MAX_COST_PER_BLOCK_UPPER_BOUND;
+  }
+  if( FD_UNLIKELY( ctx->limits.slot_max_vote_cost > FD_PACK_MAX_VOTE_COST_PER_BLOCK_UPPER_BOUND ) ) {
+    FD_LOG_WARNING(( "Underutilizing protocol vote CU limit. protocol_limit=%lu validator_limit=%lu", ctx->limits.slot_max_vote_cost, FD_PACK_MAX_VOTE_COST_PER_BLOCK_UPPER_BOUND ));
+    ctx->limits.slot_max_vote_cost = FD_PACK_MAX_VOTE_COST_PER_BLOCK_UPPER_BOUND;
+  }
+  if( FD_UNLIKELY( ctx->limits.slot_max_write_cost_per_acct > FD_PACK_MAX_WRITE_COST_PER_ACCT_UPPER_BOUND ) ) {
+    FD_LOG_WARNING(( "Underutilizing protocol write CU limit. protocol_limit=%lu validator_limit=%lu", ctx->limits.slot_max_write_cost_per_acct, FD_PACK_MAX_WRITE_COST_PER_ACCT_UPPER_BOUND ));
+    ctx->limits.slot_max_write_cost_per_acct = FD_PACK_MAX_WRITE_COST_PER_ACCT_UPPER_BOUND;
+  }
 
   /* We are about to start publishing to the shred tile for this slot
      so update the highwater mark so we never republish in this slot
@@ -1192,7 +1227,10 @@ no_longer_leader( fd_poh_ctx_t * ctx ) {
 CALLED_FROM_RUST void
 fd_ext_poh_reset( ulong         completed_bank_slot, /* The slot that successfully produced a block */
                   uchar const * reset_blockhash,     /* The hash of the last tick in the produced block */
-                  ulong         hashcnt_per_tick     /* The hashcnt per tick of the bank that completed */ ) {
+                  ulong         hashcnt_per_tick,    /* The hashcnt per tick of the bank that completed */
+                  uchar const * parent_block_id,     /* The block id of the parent block */
+                  ulong const * features_activation  /* The activation slot of shred-tile features */ ) {
+  (void)parent_block_id;
   fd_poh_ctx_t * ctx = fd_ext_poh_write_lock();
 
   ulong slot_before_reset = ctx->slot;
@@ -1284,6 +1322,16 @@ fd_ext_poh_reset( ulong         completed_bank_slot, /* The slot that successful
     if( FD_UNLIKELY( leader_before_reset ) ) publish_plugin_slot_end( ctx, slot_before_reset, ctx->cus_used );
   }
 
+  /* There is a subset of FD_SHRED_FEATURES_ACTIVATION_... slots that
+      the shred tile needs to be aware of.  Since their computation
+      requires the bank, we are forced (so far) to receive them here
+      from the Rust side, before forwarding them to the shred tile as
+      POH_PKT_TYPE_FEAT_ACT_SLOT.  This is not elegant, and it should
+      be revised in the future (TODO), but it provides a "temporary"
+      working solution to handle features activation. */
+  fd_memcpy( ctx->features_activation->slots, features_activation, sizeof(fd_shred_features_activation_t) );
+  ctx->features_activation_avail = 1UL;
+
   fd_ext_poh_write_unlock();
 }
 
@@ -1372,6 +1420,21 @@ publish_tick( fd_poh_ctx_t *      ctx,
 }
 
 static inline void
+publish_features_activation(  fd_poh_ctx_t *      ctx,
+                              fd_stem_context_t * stem ) {
+  uchar * dst = (uchar *)fd_chunk_to_laddr( ctx->shred_out->mem, ctx->shred_out->chunk );
+  fd_shred_features_activation_t * act_data = (fd_shred_features_activation_t *)dst;
+  fd_memcpy( act_data, ctx->features_activation, sizeof(fd_shred_features_activation_t) );
+
+  ulong tspub = (ulong)fd_frag_meta_ts_comp( fd_tickcount() );
+  ulong sz = sizeof(fd_shred_features_activation_t);
+  ulong sig = fd_disco_poh_sig( ctx->slot, POH_PKT_TYPE_FEAT_ACT_SLOT, 0UL );
+  fd_stem_publish( stem, ctx->shred_out->idx, sig, ctx->shred_out->chunk, sz, 0UL, 0UL, tspub );
+  ctx->shred_seq = stem->seqs[ ctx->shred_out->idx ];
+  ctx->shred_out->chunk = fd_dcache_compact_next( ctx->shred_out->chunk, sz, ctx->shred_out->chunk0, ctx->shred_out->wmark );
+}
+
+static inline void
 after_credit( fd_poh_ctx_t *      ctx,
               fd_stem_context_t * stem,
               int *               opt_poll_in,
@@ -1393,6 +1456,14 @@ after_credit( fd_poh_ctx_t *      ctx,
     return;
   }
   FD_COMPILER_MFENCE();
+
+  if( FD_UNLIKELY( ctx->features_activation_avail ) ) {
+    /* If we have received an update on features_activation, then
+        forward them to the shred tile.  In principle, this should
+        happen at most once per slot. */
+    publish_features_activation( ctx, stem );
+    ctx->features_activation_avail = 0UL;
+  }
 
   int is_leader = ctx->next_leader_slot!=ULONG_MAX && ctx->slot>=ctx->next_leader_slot;
   if( FD_UNLIKELY( is_leader && !ctx->current_leader_bank ) ) {
@@ -2240,14 +2311,18 @@ unprivileged_init( fd_topo_t *      topo,
     *ctx->plugin_out = out1( topo, tile, "poh_plugin" );
   }
 
+  ctx->features_activation_avail = 0UL;
+  for( ulong i=0UL; i<FD_SHRED_FEATURES_ACTIVATION_SLOT_CNT; i++ )
+    ctx->features_activation->slots[i] = FD_SHRED_FEATURES_ACTIVATION_SLOT_DISABLED;
+
   ulong scratch_top = FD_SCRATCH_ALLOC_FINI( l, 1UL );
   if( FD_UNLIKELY( scratch_top > (ulong)scratch + scratch_footprint( tile ) ) )
     FD_LOG_ERR(( "scratch overflow %lu %lu %lu", scratch_top - (ulong)scratch - scratch_footprint( tile ), scratch_top, (ulong)scratch + scratch_footprint( tile ) ));
 }
 
 /* One tick, one microblock, one plugin slot end, one plugin slot start,
-   and one leader update. */
-#define STEM_BURST (5UL)
+   one leader update, and one features activation. */
+#define STEM_BURST (6UL)
 
 /* See explanation in fd_pack */
 #define STEM_LAZY  (128L*3000L)
