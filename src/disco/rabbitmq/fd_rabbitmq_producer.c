@@ -105,7 +105,10 @@ int rabbitmq_publish(fd_rabbitmq_clt_t clt, unsigned char *msg, size_t msg_len) 
         .len = msg_len
     };
 
-    return amqp_basic_publish(clt.conn, 1, amqp_literal_bytes(clt.exchange),
-                                    amqp_cstring_bytes(clt.queue_name), 0, 0, NULL,
-                                    message_bytes);
+    return amqp_basic_publish(
+      clt.conn, 
+      1, 
+      amqp_cstring_bytes(clt.exchange),
+      amqp_cstring_bytes(clt.queue_name), 0, 0, NULL,
+      message_bytes);
 }
