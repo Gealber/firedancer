@@ -691,7 +691,6 @@ fd_topo_initialize( config_t * config ) {
       tile->shred.expected_shred_version        = config->consensus.expected_shred_version;
       tile->shred.shred_listen_port             = config->tiles.shred.shred_listen_port;
       tile->shred.larger_shred_limits_per_block = config->development.bench.larger_shred_limits_per_block;
-      FD_LOG_INFO(("RABBIT_MQ CONFIG: %s %s %s %d", config->rabbitmq.hostname, config->rabbitmq.username, config->rabbitmq.password, config->rabbitmq.port));
       strncpy( tile->shred.rabbitmq.hostname, config->rabbitmq.hostname, sizeof(tile->shred.rabbitmq.hostname ) );
       strncpy( tile->shred.rabbitmq.password, config->rabbitmq.password, sizeof(tile->shred.rabbitmq.password ) );
       strncpy( tile->shred.rabbitmq.username, config->rabbitmq.username, sizeof(tile->shred.rabbitmq.username ) );
