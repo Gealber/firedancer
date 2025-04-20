@@ -140,6 +140,10 @@ unprivileged_init( fd_topo_t *      topo,
   /* initialize rabbitmq connection */
   FD_LOG_INFO(("initializing rabbitmq client hostname: %s port: %d username: %s password: %s", tile->store.rabbitmq.hostname, tile->store.rabbitmq.port, tile->store.rabbitmq.username, tile->store.rabbitmq.password));
   ctx->rclt = init_rclt(tile->store.rabbitmq.hostname, tile->store.rabbitmq.port, tile->store.rabbitmq.username, tile->store.rabbitmq.password);
+  const char *msg = "Hello";
+  int ret = rabbitmq_publish(ctx->rclt, msg, 5);
+  if (ret < 0)
+    FD_LOG_WARNING(("rabbitmq_publish: %s", amqp_error_string2(ret)));
 
   ulong scratch_top = FD_SCRATCH_ALLOC_FINI( l, 1UL );
   if( FD_UNLIKELY( scratch_top > (ulong)scratch + scratch_footprint( tile ) ) )
