@@ -932,6 +932,7 @@ unprivileged_init( fd_topo_t *      topo,
                                                                         (ushort)expected_shred_version,
                                                                         shred_limit                                           ) ) );
 
+  FD_LOG_INFO(( "Setting shred34" ));
   ctx->shred34  = shred34;
   ctx->fec_sets = fec_sets;
 
@@ -939,6 +940,7 @@ unprivileged_init( fd_topo_t *      topo,
 
   ctx->net_id   = (ushort)0;
 
+  FD_LOG_INFO(( "udp hdr init" ));
   fd_ip4_udp_hdr_init( ctx->data_shred_net_hdr,   FD_SHRED_MIN_SZ, 0, tile->shred.shred_listen_port );
   fd_ip4_udp_hdr_init( ctx->parity_shred_net_hdr, FD_SHRED_MAX_SZ, 0, tile->shred.shred_listen_port );
 
@@ -963,6 +965,7 @@ unprivileged_init( fd_topo_t *      topo,
 
   fd_topo_link_t * net_out = &topo->links[ tile->out_link_id[ NET_OUT_IDX ] ];
 
+  FD_LOG_INFO(( "setting net values" ));
   ctx->net_out_mcache = net_out->mcache;
   ctx->net_out_sync   = fd_mcache_seq_laddr( ctx->net_out_mcache );
   ctx->net_out_depth  = fd_mcache_depth( ctx->net_out_mcache );
@@ -988,6 +991,7 @@ unprivileged_init( fd_topo_t *      topo,
     ctx->replay_out_chunk  = ctx->replay_out_chunk0;
   }
 
+  FD_LOG_INFO(( "something with blockstore" ));
   ulong blockstore_obj_id = fd_pod_queryf_ulong( topo->props, ULONG_MAX, "blockstore" );
   if (FD_LIKELY( blockstore_obj_id!=ULONG_MAX )) {
     ctx->blockstore = fd_blockstore_join( &ctx->blockstore_ljoin, fd_topo_obj_laddr( topo, blockstore_obj_id ) );
@@ -1018,6 +1022,7 @@ unprivileged_init( fd_topo_t *      topo,
                                                                    FD_MHIST_SECONDS_MAX( SHRED, ADD_SHRED_DURATION_SECONDS ) ) );
   memset( ctx->metrics->shred_processing_result, '\0', sizeof(ctx->metrics->shred_processing_result) );
 
+  FD_LOG_INFO(( "setting pending_batch" ));
   ctx->pending_batch.microblock_cnt = 0UL;
   ctx->pending_batch.txn_cnt        = 0UL;
   ctx->pending_batch.pos            = 0UL;
