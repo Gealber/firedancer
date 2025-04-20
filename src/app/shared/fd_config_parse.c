@@ -261,6 +261,8 @@ fdctl_pod_to_cfg( config_t * config,
 
   CFG_POP      ( ushort, rabbitmq.port                                    );
   CFG_POP      ( cstr,   rabbitmq.hostname                                );
+  CFG_POP      ( cstr,   rabbitmq.username                                );
+  CFG_POP      ( cstr,   rabbitmq.password                                );
 
   CFG_POP      ( bool,   snapshots.enabled                                );
   CFG_POP      ( bool,   snapshots.incremental_snapshots                  );
