@@ -48,7 +48,7 @@ void die_on_error(int x, char const *context) {
   }
 }
 
-fd_rabbitmq_clt_t init_rclt(const char *hostname, int port, const char *username, const char *password) {
+fd_rabbitmq_clt_t init_rclt(char *hostname, int port, const char *username, const char *password) {
   int ret;
   amqp_socket_t *socket = NULL;
   amqp_connection_state_t conn;

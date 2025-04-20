@@ -471,6 +471,11 @@ fdctl_cfg_validate( config_t * cfg ) {
 
   CFG_HAS_NON_ZERO( gossip.port );
 
+  /* RABBIT MQ */
+  CFG_HAS_NON_EMPTY( rabbitmq.hostname );
+  CFG_HAS_NON_EMPTY( rabbitmq.username );
+  CFG_HAS_NON_EMPTY( rabbitmq.password );
+
   CFG_HAS_NON_ZERO( snapshots.full_snapshot_interval_slots );
   CFG_HAS_NON_ZERO( snapshots.incremental_snapshot_interval_slots );
   CFG_HAS_NON_ZERO( snapshots.minimum_snapshot_download_speed );
