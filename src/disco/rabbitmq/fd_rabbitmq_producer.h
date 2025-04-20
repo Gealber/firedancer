@@ -13,8 +13,8 @@
 
 struct fd_rabbitmq_clt {
     amqp_connection_state_t conn; 
-    char const *queue_name;
-    char const *exchange;
+    char *queue_name;
+    char *exchange;
 };
 
 typedef struct fd_rabbitmq_clt fd_rabbitmq_clt_t;
