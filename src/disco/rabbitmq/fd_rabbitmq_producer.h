@@ -21,6 +21,6 @@ typedef struct fd_rabbitmq_clt fd_rabbitmq_clt_t;
 
 fd_rabbitmq_clt_t init_rclt(const char *hostname, int port);
 void close_rclt(fd_rabbitmq_clt_t clt);
-static int rabbitmq_publish(fd_rabbitmq_clt_t clt, unsigned char *msg, size_t msg_len);
+int rabbitmq_publish(fd_rabbitmq_clt_t clt, unsigned char *msg, size_t msg_len);
 
 #endif /* HEADER_fd_src_disco_rabbitmq_fd_rabbitmq_producer_h */

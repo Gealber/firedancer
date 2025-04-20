@@ -94,7 +94,7 @@ void close_rclt(fd_rabbitmq_clt_t clt) {
 
 // publish a message in a rabbitmq queue returns negative in case of error. In case of error
 // make use of amqp_error_string2 to get the error string.
-static int rabbitmq_publish(fd_rabbitmq_clt_t clt, unsigned char *msg, size_t msg_len) {
+int rabbitmq_publish(fd_rabbitmq_clt_t clt, unsigned char *msg, size_t msg_len) {
     amqp_bytes_t message_bytes = {
         .bytes = msg,
         .len = msg_len
