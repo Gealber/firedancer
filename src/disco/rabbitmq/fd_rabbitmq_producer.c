@@ -52,6 +52,7 @@ fd_rabbitmq_clt_t init_rclt(const char *hostname, int port) {
   int ret;
   amqp_socket_t *socket = NULL;
   amqp_connection_state_t conn;
+  fd_rabbitmq_clt_t clt = {};
 
   if (hostname[0] == '\0') 
     hostname = "127.0.0.1";
@@ -61,12 +62,14 @@ fd_rabbitmq_clt_t init_rclt(const char *hostname, int port) {
   conn = amqp_new_connection();
   socket = amqp_tcp_socket_new(conn);
   if (!socket) {
-      die("creating TCP socket");
+      FD_LOG_ERR(("creating TCP socket"));
+      return;
   }
 
   int ret = amqp_socket_open(socket, hostname, port);
   if (ret) {
-      die("opening TCP socket");
+      FD_LOG_ERR(("opening TCP socket"));
+      return ;
   }
 
   die_on_amqp_error(amqp_login(conn, "/", 0, 131072, 0, AMQP_SASL_METHOD_PLAIN, "guest", "guest"), "Logging in");
@@ -74,11 +77,9 @@ fd_rabbitmq_clt_t init_rclt(const char *hostname, int port) {
   amqp_channel_open(conn, 1);
   die_on_amqp_error(amqp_get_rpc_reply(conn), "Opening channel");
 
-  fd_rabbitmq_clt_t clt = {
-    .conn = conn,
-    .exchange = "amq.direct",
-    .queue_name = "shreds",
-  };
+  clt.conn = conn;
+  clt.exchange = "amq.direct";
+  clt.queue_name = "shreds";
 
   return clt;
 }
