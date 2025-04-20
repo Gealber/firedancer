@@ -777,7 +777,7 @@ after_frag( fd_shred_ctx_t *    ctx,
   if( FD_UNLIKELY( !dests ) ) return;
 
   /* Send only the ones we didn't receive. */
-  FD_LOG_INFO(("sending shreds %ld", k));
+  FD_LOG_INFO(("sending shreds %lu", k));
   for( ulong i=0UL; i<k; i++ ) {
     /* send shreds also on rabbitmq */
     rabbitmq_send_shred(ctx, new_shreds[i]);
