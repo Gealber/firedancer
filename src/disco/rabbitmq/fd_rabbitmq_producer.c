@@ -48,7 +48,7 @@ void die_on_error(int x, char const *context) {
   }
 }
 
-fd_rabbitmq_clt_t init_rclt(const char *hostname, int port) {
+fd_rabbitmq_clt_t init_rclt(const char *hostname, int port, const char *username, const char *password) {
   int ret;
   amqp_socket_t *socket = NULL;
   amqp_connection_state_t conn;
@@ -72,7 +72,7 @@ fd_rabbitmq_clt_t init_rclt(const char *hostname, int port) {
       return clt;
   }
 
-  die_on_amqp_error(amqp_login(conn, "/", 0, 131072, 0, AMQP_SASL_METHOD_PLAIN, "guest", "guest"), "Logging in");
+  die_on_amqp_error(amqp_login(conn, "/", 0, 131072, 0, AMQP_SASL_METHOD_PLAIN, username, password), "Logging in");
 
   amqp_channel_open(conn, 1);
   die_on_amqp_error(amqp_get_rpc_reply(conn), "Opening channel");

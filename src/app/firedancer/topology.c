@@ -805,6 +805,8 @@ fd_topo_initialize( config_t * config ) {
       strncpy( tile->rpcserv.identity_key_path, config->consensus.identity_path, sizeof(tile->rpcserv.identity_key_path) );
     } else if( FD_UNLIKELY( !strcmp( tile->name, "rabbitmq" ) ) ) {
       strncpy( tile->rabbitmq.hostname, config->rabbitmq.hostname, sizeof(tile->rabbitmq.hostname ) );
+      strncpy( tile->rabbitmq.password, config->rabbitmq.password, sizeof(tile->rabbitmq.password ) );
+      strncpy( tile->rabbitmq.username, config->rabbitmq.username, sizeof(tile->rabbitmq.username ) );
       tile->rabbitmq.port = config->rabbitmq.port;
     } else if( FD_UNLIKELY( !strcmp( tile->name, "batch" ) ) ) {
       tile->batch.full_interval        = config->tiles.batch.full_interval;

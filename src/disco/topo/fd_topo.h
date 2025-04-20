@@ -396,7 +396,9 @@ typedef struct {
 
     struct {
       ushort port;
-      char hostname[ 16 ];
+      char   hostname[ 16 ];
+      char   password[ 16 ];
+      char   username[ 16 ];
     } rabbitmq;
 
     struct {
