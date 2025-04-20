@@ -458,13 +458,13 @@ fd_topo_initialize( config_t * config ) {
         tile->shred.adtl_dest.port = 0;
       }
 
-      strncpy( tile->shred.rabbitmq.hostname, config->rabbitmq.hostname, sizeof(tile->shred.rabbitmq.hostname ) );
-      strncpy( tile->shred.rabbitmq.password, config->rabbitmq.password, sizeof(tile->shred.rabbitmq.password ) );
-      strncpy( tile->shred.rabbitmq.username, config->rabbitmq.username, sizeof(tile->shred.rabbitmq.username ) );
-      tile->shred.rabbitmq.port = config->rabbitmq.port;
     } else if( FD_UNLIKELY( !strcmp( tile->name, "store" ) ) ) {
       tile->store.disable_blockstore_from_slot = config->development.bench.disable_blockstore_from_slot;
 
+      strncpy( tile->store.rabbitmq.hostname, config->rabbitmq.hostname, sizeof(tile->store.rabbitmq.hostname ) );
+      strncpy( tile->store.rabbitmq.password, config->rabbitmq.password, sizeof(tile->store.rabbitmq.password ) );
+      strncpy( tile->store.rabbitmq.username, config->rabbitmq.username, sizeof(tile->store.rabbitmq.username ) );
+      tile->store.rabbitmq.port = config->rabbitmq.port;
     } else if( FD_UNLIKELY( !strcmp( tile->name, "sign" ) ) ) {
       strncpy( tile->sign.identity_key_path, config->consensus.identity_path, sizeof(tile->sign.identity_key_path) );
 

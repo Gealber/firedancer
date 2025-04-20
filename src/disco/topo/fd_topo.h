@@ -234,17 +234,16 @@ typedef struct {
         uint   ip;
         ushort port;
       } adtl_dest;
+    } shred;
 
+    struct {
+      ulong disable_blockstore_from_slot;
       struct {
         ushort port;
         char   hostname[ 16 ];
         char   password[ 16 ];
         char   username[ 16 ];
       } rabbitmq;
-    } shred;
-
-    struct {
-      ulong disable_blockstore_from_slot;
     } store;
 
     struct {

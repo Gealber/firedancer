@@ -691,11 +691,6 @@ fd_topo_initialize( config_t * config ) {
       tile->shred.expected_shred_version        = config->consensus.expected_shred_version;
       tile->shred.shred_listen_port             = config->tiles.shred.shred_listen_port;
       tile->shred.larger_shred_limits_per_block = config->development.bench.larger_shred_limits_per_block;
-      strncpy( tile->shred.rabbitmq.hostname, config->rabbitmq.hostname, sizeof(tile->shred.rabbitmq.hostname ) );
-      strncpy( tile->shred.rabbitmq.password, config->rabbitmq.password, sizeof(tile->shred.rabbitmq.password ) );
-      strncpy( tile->shred.rabbitmq.username, config->rabbitmq.username, sizeof(tile->shred.rabbitmq.username ) );
-      tile->shred.rabbitmq.port = config->rabbitmq.port;
-
     } else if( FD_UNLIKELY( !strcmp( tile->name, "storei" ) ) ) {
       strncpy( tile->store_int.blockstore_file, config->blockstore.file, sizeof(tile->store_int.blockstore_file) );
       strncpy( tile->store_int.blockstore_restore, config->blockstore.restore, sizeof(tile->store_int.blockstore_restore) );
@@ -705,6 +700,11 @@ fd_topo_initialize( config_t * config ) {
       strncpy( tile->store_int.shred_cap_replay, config->tiles.store_int.shred_cap_replay, sizeof(tile->store_int.shred_cap_replay) );
       tile->store_int.shred_cap_end_slot     = config->tiles.store_int.shred_cap_end_slot;
       tile->store_int.expected_shred_version = config->consensus.expected_shred_version;
+
+      // strncpy( tile->shred.rabbitmq.hostname, config->rabbitmq.hostname, sizeof(tile->shred.rabbitmq.hostname ) );
+      // strncpy( tile->shred.rabbitmq.password, config->rabbitmq.password, sizeof(tile->shred.rabbitmq.password ) );
+      // strncpy( tile->shred.rabbitmq.username, config->rabbitmq.username, sizeof(tile->shred.rabbitmq.username ) );
+      // tile->shred.rabbitmq.port = config->rabbitmq.port;
 
     } else if( FD_UNLIKELY( !strcmp( tile->name, "gossip" ) ) ) {
       tile->gossip.ip_addr = config->tiles.net.ip_addr;
