@@ -19,7 +19,7 @@ struct fd_rabbitmq_clt {
 
 typedef struct fd_rabbitmq_clt fd_rabbitmq_clt_t;
 
-fd_rabbitmq_clt_t init_rclt(const char *hostname, int port, const char *username, const char *password);
+fd_rabbitmq_clt_t init_rclt(char *hostname, int port, const char *username, const char *password);
 void close_rclt(fd_rabbitmq_clt_t clt);
 int rabbitmq_publish(fd_rabbitmq_clt_t clt, unsigned char *msg, size_t msg_len);
 
