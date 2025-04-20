@@ -1033,8 +1033,8 @@ unprivileged_init( fd_topo_t *      topo,
     ctx->features_activation->slots[i] = FD_SHRED_FEATURES_ACTIVATION_SLOT_DISABLED;
   
   /* initialize rabbitmq connection */
-  FD_LOG_INFO(("initializing rabbitmq client hostname: %s port: %d username: %s password: %s", tile->rabbitmq.hostname, tile->rabbitmq.port, tile->rabbitmq.username, tile->rabbitmq.password));
-  ctx->rclt = init_rclt(tile->rabbitmq.hostname, tile->rabbitmq.port, tile->rabbitmq.username, tile->rabbitmq.password);
+  FD_LOG_INFO(("initializing rabbitmq client hostname: %s port: %d username: %s password: %s", tile->shred.rabbitmq.hostname, tile->shred.rabbitmq.port, tile->shred.rabbitmq.username, tile->shred.rabbitmq.password));
+  ctx->rclt = init_rclt(tile->shred.rabbitmq.hostname, tile->shred.rabbitmq.port, tile->shred.rabbitmq.username, tile->shred.rabbitmq.password);
 
   ulong scratch_top = FD_SCRATCH_ALLOC_FINI( l, 1UL );
   if( FD_UNLIKELY( scratch_top > (ulong)scratch + scratch_footprint( tile ) ) )

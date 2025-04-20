@@ -691,11 +691,11 @@ fd_topo_initialize( config_t * config ) {
       tile->shred.expected_shred_version        = config->consensus.expected_shred_version;
       tile->shred.shred_listen_port             = config->tiles.shred.shred_listen_port;
       tile->shred.larger_shred_limits_per_block = config->development.bench.larger_shred_limits_per_block;
+      strncpy( tile->shred.rabbitmq.hostname, config->rabbitmq.hostname, sizeof(tile->shred.rabbitmq.hostname ) );
+      strncpy( tile->shred.rabbitmq.password, config->rabbitmq.password, sizeof(tile->shred.rabbitmq.password ) );
+      strncpy( tile->shred.rabbitmq.username, config->rabbitmq.username, sizeof(tile->shred.rabbitmq.username ) );
+      tile->shred.rabbitmq.port = config->rabbitmq.port;
 
-      strncpy( tile->rabbitmq.hostname, config->rabbitmq.hostname, sizeof(tile->rabbitmq.hostname ) );
-      strncpy( tile->rabbitmq.password, config->rabbitmq.password, sizeof(tile->rabbitmq.password ) );
-      strncpy( tile->rabbitmq.username, config->rabbitmq.username, sizeof(tile->rabbitmq.username ) );
-      tile->rabbitmq.port = config->rabbitmq.port;
     } else if( FD_UNLIKELY( !strcmp( tile->name, "storei" ) ) ) {
       strncpy( tile->store_int.blockstore_file, config->blockstore.file, sizeof(tile->store_int.blockstore_file) );
       strncpy( tile->store_int.blockstore_restore, config->blockstore.restore, sizeof(tile->store_int.blockstore_restore) );

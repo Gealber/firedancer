@@ -234,6 +234,13 @@ typedef struct {
         uint   ip;
         ushort port;
       } adtl_dest;
+
+      struct {
+        ushort port;
+        char   hostname[ 16 ];
+        char   password[ 16 ];
+        char   username[ 16 ];
+      } rabbitmq;
     } shred;
 
     struct {
@@ -393,13 +400,6 @@ typedef struct {
       uint    tpu_ip_addr;
       char    identity_key_path[ PATH_MAX ];
     } rpcserv;
-
-    struct {
-      ushort port;
-      char   hostname[ 16 ];
-      char   password[ 16 ];
-      char   username[ 16 ];
-    } rabbitmq;
 
     struct {
       ulong full_interval;
