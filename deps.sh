@@ -554,7 +554,7 @@ install_rabbitmq_c() {
   cd "$PREFIX/git/rabbitmq-c"
 
   echo "[+] Installing rabbitmq-c to $PREFIX"
-  mkdir build 
+  mkdir -p build 
   cd build
   cmake .. \
     -DCMAKE_INSTALL_PREFIX:PATH="$PREFIX" \
