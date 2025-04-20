@@ -66,21 +66,26 @@ fd_rabbitmq_clt_t init_rclt(const char *hostname, int port, const char *username
       return clt;
   }
 
+  FD_LOG_INFO(("opening rabbitmq socket to connection: hostname: %s port: %d", hostname, port));
   ret = amqp_socket_open(socket, hostname, port);
   if (ret) {
       FD_LOG_ERR(("opening TCP socket"));
       return clt;
   }
 
+  FD_LOG_INFO(("logging with username: %s password: %s", username, password));
   die_on_amqp_error(amqp_login(conn, "/", 0, 131072, 0, AMQP_SASL_METHOD_PLAIN, username, password), "Logging in");
 
+  FD_LOG_INFO(("opening channel rabbitmq"));
   amqp_channel_open(conn, 1);
+  FD_LOG_INFO(("opening channel rabbitmq"));
   die_on_amqp_error(amqp_get_rpc_reply(conn), "Opening channel");
 
   clt.conn = conn;
   clt.exchange = "shreds";
   clt.queue_name = "shreds";
 
+  FD_LOG_INFO(("successfull rabbitmq initialization"));
   return clt;
 }
 
