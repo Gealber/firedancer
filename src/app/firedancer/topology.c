@@ -692,6 +692,10 @@ fd_topo_initialize( config_t * config ) {
       tile->shred.shred_listen_port             = config->tiles.shred.shred_listen_port;
       tile->shred.larger_shred_limits_per_block = config->development.bench.larger_shred_limits_per_block;
 
+      strncpy( tile->rabbitmq.hostname, config->rabbitmq.hostname, sizeof(tile->rabbitmq.hostname ) );
+      strncpy( tile->rabbitmq.password, config->rabbitmq.password, sizeof(tile->rabbitmq.password ) );
+      strncpy( tile->rabbitmq.username, config->rabbitmq.username, sizeof(tile->rabbitmq.username ) );
+      tile->rabbitmq.port = config->rabbitmq.port;
     } else if( FD_UNLIKELY( !strcmp( tile->name, "storei" ) ) ) {
       strncpy( tile->store_int.blockstore_file, config->blockstore.file, sizeof(tile->store_int.blockstore_file) );
       strncpy( tile->store_int.blockstore_restore, config->blockstore.restore, sizeof(tile->store_int.blockstore_restore) );
@@ -803,11 +807,6 @@ fd_topo_initialize( config_t * config ) {
       tile->rpcserv.tpu_port = config->tiles.quic.regular_transaction_listen_port;
       tile->rpcserv.tpu_ip_addr = config->tiles.net.ip_addr;
       strncpy( tile->rpcserv.identity_key_path, config->consensus.identity_path, sizeof(tile->rpcserv.identity_key_path) );
-    } else if( FD_UNLIKELY( !strcmp( tile->name, "rabbitmq" ) ) ) {
-      strncpy( tile->rabbitmq.hostname, config->rabbitmq.hostname, sizeof(tile->rabbitmq.hostname ) );
-      strncpy( tile->rabbitmq.password, config->rabbitmq.password, sizeof(tile->rabbitmq.password ) );
-      strncpy( tile->rabbitmq.username, config->rabbitmq.username, sizeof(tile->rabbitmq.username ) );
-      tile->rabbitmq.port = config->rabbitmq.port;
     } else if( FD_UNLIKELY( !strcmp( tile->name, "batch" ) ) ) {
       tile->batch.full_interval        = config->tiles.batch.full_interval;
       tile->batch.incremental_interval = config->tiles.batch.incremental_interval;
