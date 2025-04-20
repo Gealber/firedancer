@@ -2,7 +2,7 @@
 #define HEADER_fd_src_disco_rabbitmq_fd_rabbitmq_producer_h
 
 // NOTE: This is not part of the original firedancer implementation
-#include "../util/log/fd_log.h"
+#include "../../util/log/fd_log.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
