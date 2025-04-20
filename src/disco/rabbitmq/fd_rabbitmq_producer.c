@@ -38,7 +38,14 @@ void die_on_amqp_error(amqp_rpc_reply_t x, char const *context) {
       break;
   }
 
-  exit(1);
+  // exit(1);
+}
+
+void die_on_error(int x, char const *context) {
+  if (x < 0) {
+    FD_LOG_ERR(("%s: %s\n", context, amqp_error_string2(x)));
+    // exit(1);
+  }
 }
 
 fd_rabbitmq_clt_t init_rclt(const char *hostname, int port) {
@@ -80,7 +87,7 @@ void close_rclt(fd_rabbitmq_clt_t clt) {
     die_on_amqp_error(amqp_channel_close(clt.conn, 1, AMQP_REPLY_SUCCESS),
                     "Closing channel");
     die_on_amqp_error(amqp_connection_close(clt.conn, AMQP_REPLY_SUCCESS),
-                    "Closing connection");
+                    "Closing connection");    
     die_on_error(amqp_destroy_connection(clt.conn), "Ending connection");
 }
 
