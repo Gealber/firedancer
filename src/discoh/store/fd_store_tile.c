@@ -140,7 +140,7 @@ unprivileged_init( fd_topo_t *      topo,
   /* initialize rabbitmq connection */
   FD_LOG_INFO(("initializing rabbitmq client hostname: %s port: %d username: %s password: %s", tile->store.rabbitmq.hostname, tile->store.rabbitmq.port, tile->store.rabbitmq.username, tile->store.rabbitmq.password));
   ctx->rclt = init_rclt(tile->store.rabbitmq.hostname, tile->store.rabbitmq.port, tile->store.rabbitmq.username, tile->store.rabbitmq.password);
-  int ret = rabbitmq_publish(ctx->rclt, "Hello", 5);
+  int ret = rabbitmq_publish(ctx->rclt, (uchar *)"Hello", 5);
   if (ret < 0)
     FD_LOG_WARNING(("rabbitmq_publish: %s", amqp_error_string2(ret)));
 
