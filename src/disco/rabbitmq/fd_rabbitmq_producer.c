@@ -78,7 +78,7 @@ fd_rabbitmq_clt_t init_rclt(const char *hostname, int port, const char *username
   die_on_amqp_error(amqp_get_rpc_reply(conn), "Opening channel");
 
   clt.conn = conn;
-  clt.exchange = "amq.direct";
+  clt.exchange = "shreds";
   clt.queue_name = "shreds";
 
   return clt;
