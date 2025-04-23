@@ -136,6 +136,8 @@
 /* A merkle inclusion proof node. */
 typedef uchar fd_shred_merkle_t[FD_SHRED_MERKLE_NODE_SZ];
 
+FD_STATIC_ASSERT( sizeof(fd_bmtree_node_t) == FD_SHRED_MERKLE_ROOT_SZ, update FD_SHRED_MERKLE_ROOT_SZ );
+
 /* Constants relating to the data shred "flags" field. */
 
 /* Mask of the "reference tick"    field in shred.data.flags */
@@ -148,6 +150,13 @@ typedef uchar fd_shred_merkle_t[FD_SHRED_MERKLE_NODE_SZ];
 
 /* Maximum number of data shreds in a slot, also maximum number of parity shreds in a slot */
 #define FD_SHRED_MAX_PER_SLOT (1 << 15UL) /* 32,768 shreds */
+
+/* Many static bounds are specified around the assumption that this is a
+   protocol limit on the max number of shreds in a slot. If this limit
+   changes, all the relevant usages in other areas of the Firedancer
+   codebase should be updated before modifying this assertion. */
+
+FD_STATIC_ASSERT( FD_SHRED_MAX_PER_SLOT == 32768, check all usages before changing this limit! );
 
 /* 36,536,320 bytes per slot */
 #define FD_SHRED_DATA_PAYLOAD_MAX_PER_SLOT (FD_SHRED_DATA_PAYLOAD_MAX * FD_SHRED_MAX_PER_SLOT)

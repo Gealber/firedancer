@@ -192,6 +192,8 @@ struct fd_replay_tile_ctx {
   char const * genesis;
   char const * incremental;
   char const * snapshot;
+  int          incremental_src_type;
+  int          snapshot_src_type;
 
   /* Do not modify order! This is join-order in unprivileged_init. */
 
@@ -2071,19 +2073,19 @@ read_snapshot( void *              _ctx,
        stake weights. After this, repair will kick off concurrently with loading
        the rest of the snapshots. */
 
-    /* TODO: enable snapshot verification for all 3 snapshot loads.
-       TODO: If prefetching the manifest is enabled it leads to
+    /* TODO: Verify account hashes for all 3 snapshot loads. */
+    /* TODO: If prefetching the manifest is enabled it leads to
        incorrect snapshot loads. This needs to be looked into. */
     if( strlen( incremental )>0UL ) {
       uchar *                  tmp_mem      = fd_spad_alloc( ctx->runtime_spad, fd_snapshot_load_ctx_align(), fd_snapshot_load_ctx_footprint() );
-      /* TODO: enable snapshot verification */
 
       fd_snapshot_load_ctx_t * tmp_snap_ctx = fd_snapshot_load_new( tmp_mem,
                                                                     incremental,
+                                                                    ctx->incremental_src_type,
                                                                     ctx->slot_ctx,
                                                                     false,
                                                                     false,
-                                                                    FD_SNAPSHOT_TYPE_FULL,
+                                                                    FD_SNAPSHOT_TYPE_INCREMENTAL,
                                                                     ctx->exec_spads,
                                                                     ctx->exec_spad_cnt,
                                                                     ctx->runtime_spad,
@@ -2095,16 +2097,11 @@ read_snapshot( void *              _ctx,
 
     }
 
-    /* In order to kick off repair effectively we need the snapshot slot and
-       the stake weights. These are both available in the manifest. We will
-       try to load in the manifest from the latest snapshot that is available,
-       then setup the blockstore and publish the stake weights. After this,
-       repair will kick off concurrently with loading the rest of the snapshots. */
 
     uchar *                  mem      = fd_spad_alloc( ctx->runtime_spad, fd_snapshot_load_ctx_align(), fd_snapshot_load_ctx_footprint() );
-    /* TODO: enable snapshot verification */
     fd_snapshot_load_ctx_t * snap_ctx = fd_snapshot_load_new( mem,
                                                               snapshot,
+                                                              ctx->snapshot_src_type,
                                                               ctx->slot_ctx,
                                                               false,
                                                               false,
@@ -2140,8 +2137,8 @@ read_snapshot( void *              _ctx,
 
     /* The slot of the full snapshot should be used as the base slot to verify the incremental snapshot,
        not the slot context's slot - which is the slot of the incremental, not the full snapshot. */
-    /* TODO: enable snapshot verification */
     fd_snapshot_load_all( incremental,
+                          ctx->incremental_src_type,
                           ctx->slot_ctx,
                           &base_slot,
                           NULL,
@@ -2260,10 +2257,10 @@ init_after_snapshot( fd_replay_tile_ctx_t * ctx,
   fd_ghost_init( ctx->ghost, snapshot_slot );
 
   fd_funk_rec_key_t key = { 0 };
-  fd_memcpy( key.c, ctx->vote_acc, sizeof(fd_pubkey_t) );
-  key.c[FD_FUNK_REC_KEY_FOOTPRINT - 1] = FD_FUNK_KEY_TYPE_ACC;
+  memcpy( key.uc, ctx->vote_acc, sizeof(fd_pubkey_t) );
+  key.uc[FD_FUNK_REC_KEY_FOOTPRINT - 1] = FD_FUNK_KEY_TYPE_ACC;
   fd_tower_from_vote_acc( ctx->tower, ctx->funk, snapshot_fork->slot_ctx->funk_txn, &key );
-  FD_LOG_NOTICE(( "vote account: %s", FD_BASE58_ENC_32_ALLOCA( key.c ) ));
+  FD_LOG_NOTICE(( "vote account: %s", FD_BASE58_ENC_32_ALLOCA( key.uc ) ));
   fd_tower_print( ctx->tower, ctx->root );
 
   fd_bank_hash_cmp_t * bank_hash_cmp = ctx->epoch_ctx->bank_hash_cmp;
@@ -2296,7 +2293,6 @@ init_after_snapshot( fd_replay_tile_ctx_t * ctx,
 void
 init_snapshot( fd_replay_tile_ctx_t * ctx,
                fd_stem_context_t *    stem ) {
-  FD_LOG_NOTICE(( "init snapshot" ));
   /* Init slot_ctx */
 
   uchar * slot_ctx_mem        = fd_spad_alloc( ctx->runtime_spad, FD_EXEC_SLOT_CTX_ALIGN, FD_EXEC_SLOT_CTX_FOOTPRINT );
@@ -2394,22 +2390,22 @@ publish_votes_to_plugin( fd_replay_tile_ctx_t * ctx,
       case fd_vote_state_versioned_enum_v0_23_5:
         node_pubkey   = vsv->inner.v0_23_5.node_pubkey;
         commission    = vsv->inner.v0_23_5.commission;
-        _epoch_credits = deq_fd_vote_epoch_credits_t_peek_tail_const( vsv->inner.v0_23_5.epoch_credits );
-        epoch_credits = _epoch_credits->credits - _epoch_credits->prev_credits;
+        _epoch_credits = deq_fd_vote_epoch_credits_t_cnt( vsv->inner.v0_23_5.epoch_credits ) == 0 ? NULL : deq_fd_vote_epoch_credits_t_peek_tail_const( vsv->inner.v0_23_5.epoch_credits );
+        epoch_credits = _epoch_credits==NULL ? 0UL : _epoch_credits->credits - _epoch_credits->prev_credits;
         root_slot     = vsv->inner.v0_23_5.root_slot;
         break;
       case fd_vote_state_versioned_enum_v1_14_11:
         node_pubkey   = vsv->inner.v1_14_11.node_pubkey;
         commission    = vsv->inner.v1_14_11.commission;
-        _epoch_credits = deq_fd_vote_epoch_credits_t_peek_tail_const( vsv->inner.v1_14_11.epoch_credits );
-        epoch_credits = _epoch_credits->credits - _epoch_credits->prev_credits;
+        _epoch_credits = deq_fd_vote_epoch_credits_t_cnt( vsv->inner.v1_14_11.epoch_credits ) == 0 ? NULL : deq_fd_vote_epoch_credits_t_peek_tail_const( vsv->inner.v1_14_11.epoch_credits );
+        epoch_credits = _epoch_credits==NULL ? 0UL : _epoch_credits->credits - _epoch_credits->prev_credits;
         root_slot     = vsv->inner.v1_14_11.root_slot;
         break;
       case fd_vote_state_versioned_enum_current:
         node_pubkey   = vsv->inner.current.node_pubkey;
         commission    = vsv->inner.current.commission;
-        _epoch_credits = deq_fd_vote_epoch_credits_t_peek_tail_const( vsv->inner.current.epoch_credits );
-        epoch_credits = _epoch_credits->credits - _epoch_credits->prev_credits;
+        _epoch_credits = deq_fd_vote_epoch_credits_t_cnt( vsv->inner.current.epoch_credits ) == 0 ? NULL : deq_fd_vote_epoch_credits_t_peek_tail_const( vsv->inner.current.epoch_credits );
+        epoch_credits = _epoch_credits==NULL ? 0UL : _epoch_credits->credits - _epoch_credits->prev_credits;
         root_slot     = vsv->inner.v0_23_5.root_slot;
         break;
       default:
@@ -2641,12 +2637,12 @@ after_credit( fd_replay_tile_ctx_t * ctx,
     ulong prev_finalized = ctx->forks->finalized;
     fd_forks_update( ctx->forks, ctx->epoch, ctx->funk, ctx->ghost, curr_slot );
 
-    if (FD_UNLIKELY( prev_confirmed!=ctx->forks->confirmed ) ) {
+    if (FD_UNLIKELY( prev_confirmed!=ctx->forks->confirmed && ctx->replay_plugin_out_mem ) ) {
       ulong msg[ 1 ] = { ctx->forks->confirmed };
       replay_plugin_publish( ctx, stem, FD_PLUGIN_MSG_SLOT_OPTIMISTICALLY_CONFIRMED, (uchar const *)msg, sizeof(msg) );
     }
 
-    if (FD_UNLIKELY( prev_finalized!=ctx->forks->finalized ) ) {
+    if (FD_UNLIKELY( prev_finalized!=ctx->forks->finalized && ctx->replay_plugin_out_mem ) ) {
       ulong msg[ 1 ] = { ctx->forks->finalized };
       replay_plugin_publish( ctx, stem, FD_PLUGIN_MSG_SLOT_ROOTED, (uchar const *)msg, sizeof(msg) );
     }
@@ -3075,6 +3071,9 @@ unprivileged_init( fd_topo_t *      topo,
   ctx->genesis             = tile->replay.genesis;
   ctx->incremental         = tile->replay.incremental;
   ctx->snapshot            = tile->replay.snapshot;
+
+  ctx->incremental_src_type = tile->replay.incremental_src_type;
+  ctx->snapshot_src_type    = tile->replay.snapshot_src_type;
 
   /**********************************************************************/
   /* alloc                                                              */

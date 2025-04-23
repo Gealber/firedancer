@@ -8,7 +8,7 @@ fd_funk_align( void ) {
 
 ulong
 fd_funk_footprint( ulong txn_max,
-                      ulong rec_max ) {
+                   uint  rec_max ) {
 
   ulong l = FD_LAYOUT_INIT;
 
@@ -19,7 +19,7 @@ fd_funk_footprint( ulong txn_max,
   l = FD_LAYOUT_APPEND( l, fd_funk_txn_pool_align(), fd_funk_txn_pool_footprint() );
   l = FD_LAYOUT_APPEND( l, alignof(fd_funk_txn_t), sizeof(fd_funk_txn_t) * txn_max );
 
-  ulong rec_chain_cnt = fd_funk_rec_map_chain_cnt_est( rec_max );
+  ulong rec_chain_cnt = fd_funk_rec_map_chain_cnt_est( (ulong)rec_max );
   l = FD_LAYOUT_APPEND( l, fd_funk_rec_map_align(), fd_funk_rec_map_footprint( rec_chain_cnt ) );
   l = FD_LAYOUT_APPEND( l, fd_funk_rec_pool_align(), fd_funk_rec_pool_footprint() );
   l = FD_LAYOUT_APPEND( l, alignof(fd_funk_rec_t), sizeof(fd_funk_rec_t) * rec_max );
@@ -38,7 +38,7 @@ fd_funk_new( void * shmem,
              ulong  wksp_tag,
              ulong  seed,
              ulong  txn_max,
-             ulong  rec_max ) {
+             uint   rec_max ) {
   fd_funk_t * funk = (fd_funk_t *)shmem;
   fd_wksp_t * wksp = fd_wksp_containing( funk );
 
@@ -203,31 +203,11 @@ fd_funk_delete( void * shfunk ) {
 
   /* Free all the records */
   fd_alloc_t * alloc = fd_funk_alloc( funk, wksp);
-
-  /* Thread-safe iteration as described in the documentation of fd_map_chain_para.c */
-  fd_funk_rec_map_t rec_map = fd_funk_rec_map( funk, wksp );
-  ulong lock_cnt               = fd_funk_rec_map_chain_cnt( &rec_map );
-  ulong * lock_seq             = (ulong *)fd_alloc_malloc( alloc, alignof(ulong), sizeof(ulong) * lock_cnt );
-  for( ulong lock_idx=0UL; lock_idx<lock_cnt; lock_idx++ ) {
-    lock_seq[ lock_idx ] = lock_idx;
+  fd_funk_all_iter_t iter[1];
+  for( fd_funk_all_iter_new( funk, iter ); !fd_funk_all_iter_done( iter ); fd_funk_all_iter_next( iter ) ) {
+    fd_funk_rec_t * rec = fd_funk_all_iter_ele( iter );
+    fd_funk_val_flush( rec, alloc, wksp );
   }
-
-  fd_funk_rec_map_iter_lock( &rec_map, lock_seq, lock_cnt, FD_MAP_FLAG_BLOCKING );
-
-  for( ulong lock_idx=0UL; lock_idx<lock_cnt; lock_idx++ ) {
-    /* Process chains in the order they were locked */
-    ulong chain_idx = lock_seq[ lock_idx ];
-
-    for( fd_funk_rec_map_iter_t iter = fd_funk_rec_map_iter( &rec_map, chain_idx );
-      !fd_funk_rec_map_iter_done( iter );
-      iter = fd_funk_rec_map_iter_next( iter ) ) {
-      fd_funk_val_flush( fd_funk_rec_map_iter_ele( iter ), alloc, wksp );
-    }
-
-    /* Unlock incrementally */
-    fd_funk_rec_map_iter_unlock( &rec_map, lock_seq + lock_idx, 1UL );
-  }
-  fd_alloc_free( alloc, (void*)lock_seq );
 
   /* Free the allocator */
   fd_wksp_free_laddr( fd_alloc_delete( fd_alloc_leave( alloc ) ) );
@@ -320,8 +300,8 @@ fd_funk_verify( fd_funk_t * funk ) {
   TEST( rec_chain_cnt==fd_funk_rec_map_chain_cnt( &rec_map ) );
   TEST( seed==fd_funk_rec_map_seed( &rec_map ) );
 
-  ulong rec_head_idx = funk->rec_head_idx;
-  ulong rec_tail_idx = funk->rec_tail_idx;
+  uint rec_head_idx = funk->rec_head_idx;
+  uint rec_tail_idx = funk->rec_tail_idx;
 
   int null_rec_head = fd_funk_rec_idx_is_null( rec_head_idx );
   int null_rec_tail = fd_funk_rec_idx_is_null( rec_tail_idx );

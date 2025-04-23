@@ -277,7 +277,7 @@ typedef struct {
       int   tx_metadata_storage;
       char  capture[ PATH_MAX ];
       char  funk_checkpt[ PATH_MAX ];
-      ulong funk_rec_max;
+      uint  funk_rec_max;
       ulong funk_sz_gb;
       ulong funk_txn_max;
       char  funk_file[ PATH_MAX ];
@@ -291,6 +291,9 @@ typedef struct {
       int   plugins_enabled;
 
       /* not specified in TOML */
+
+      int   incremental_src_type;
+      int   snapshot_src_type;
 
       char  identity_key_path[ PATH_MAX ];
       uint  ip_addr;
@@ -362,6 +365,8 @@ typedef struct {
 
       int     good_peer_cache_file_fd;
       char    identity_key_path[ PATH_MAX ];
+      ulong   max_pending_shred_sets;
+      uint    shred_tile_cnt;
     } repair;
 
     struct {

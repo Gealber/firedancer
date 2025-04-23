@@ -407,14 +407,16 @@ struct fd_config {
     struct {
       char  capture[ PATH_MAX ];
       char  funk_checkpt[ PATH_MAX ];
-      ulong funk_rec_max;
+      uint  funk_rec_max;
       ulong funk_sz_gb;
       ulong funk_txn_max;
       char  funk_file[ PATH_MAX ];
       char  genesis[ PATH_MAX ];
       char  incremental[ PATH_MAX ];
+      char  incremental_url[ PATH_MAX ];
       char  slots_replayed[PATH_MAX ];
       char  snapshot[ PATH_MAX ];
+      char  snapshot_url[ PATH_MAX ];
       char  status_cache[ PATH_MAX ];
       char  cluster_version[ 32 ];
       char  tower_checkpt[ PATH_MAX ];
