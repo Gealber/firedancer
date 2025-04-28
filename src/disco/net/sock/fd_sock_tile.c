@@ -188,18 +188,18 @@ privileged_init( fd_topo_t *      topo,
   static char const * udp_port_links[] = {
     "net_quic",   /* legacy_transaction_listen_port */
     "net_quic",   /* quic_transaction_listen_port */
-    "net_shred",  /* shred_listen_port */
+    "net_shred",  /* shred_listen_port (turbine) */
     "net_gossip", /* gossip_listen_port */
-    "net_repair", /* repair_intake_listen_port */
-    "net_repair"  /* repair_intake_listen_port */
+    "net_shred",  /* shred_listen_port (repair) */
+    "net_repair"  /* repair_serve_listen_port */
   };
   static uchar const udp_port_protos[] = {
     DST_PROTO_TPU_UDP,  /* legacy_transaction_listen_port */
     DST_PROTO_TPU_QUIC, /* quic_transaction_listen_port */
-    DST_PROTO_SHRED,    /* shred_listen_port */
+    DST_PROTO_SHRED,    /* shred_listen_port (turbine) */
     DST_PROTO_GOSSIP,   /* gossip_listen_port */
-    DST_PROTO_REPAIR,   /* repair_intake_listen_port */
-    DST_PROTO_REPAIR    /* repair_intake_listen_port */
+    DST_PROTO_SHRED,    /* shred_listen_port (repair) */
+    DST_PROTO_REPAIR    /* repair_serve_listen_port */
   };
   for( uint candidate_idx=0U; candidate_idx<6; candidate_idx++ ) {
     if( !udp_port_candidates[ candidate_idx ] ) continue;
@@ -306,7 +306,6 @@ poll_rx_socket( fd_sock_tile_t *    ctx,
   ulong        chunk_next = link->chunk;
   uchar *      cmsg_next  = ctx->batch_cmsg;
 
-  ctx->tx_ptr = ctx->tx_scratch0;
   for( ulong j=0UL; j<STEM_BURST; j++ ) {
     ctx->batch_iov[ j ].iov_base = (uchar *)fd_chunk_to_laddr( base, chunk_next ) + hdr_sz;
     ctx->batch_iov[ j ].iov_len  = payload_max;
@@ -323,9 +322,6 @@ poll_rx_socket( fd_sock_tile_t *    ctx,
        At function exit, chunks into which a packet was received are
        committed, all others are freed. */
     chunk_next = fd_dcache_compact_next( chunk_next, FD_NET_MTU, chunk0, wmark );
-  }
-  if( FD_UNLIKELY( ctx->tx_ptr > ctx->tx_scratch1 ) ) {
-    FD_LOG_ERR(( "Out of bounds batch" ));
   }
 
   int msg_cnt = recvmmsg( sock_fd, ctx->batch_msg, STEM_BURST, MSG_DONTWAIT, NULL );
@@ -452,6 +448,7 @@ flush_tx_batch( fd_sock_tile_t * ctx ) {
   }
   ctx->metrics.tx_pkt_cnt += (ulong)send_cnt;
 done:
+  ctx->tx_ptr = ctx->tx_scratch0;
   ctx->metrics.sys_sendmmsg_cnt++;
   ctx->batch_cnt = 0;
 }

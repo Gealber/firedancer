@@ -58,6 +58,11 @@
 #define FD_SHRED_REPAIR_MTU (FD_SHRED_DATA_HEADER_SZ + FD_SHRED_MERKLE_ROOT_SZ)
 FD_STATIC_ASSERT( FD_SHRED_REPAIR_MTU == 120 , update FD_SHRED_REPAIR_MTU );
 
+/* Maximum size of frags going into the writer tile. */
+#define FD_REPLAY_WRITER_MTU (128UL)
+#define FD_EXEC_WRITER_MTU   (128UL)
+
+
 #define FD_NETMUX_SIG_MIN_HDR_SZ    ( 42UL) /* The default header size, which means no vlan tags and no IP options. */
 #define FD_NETMUX_SIG_IGNORE_HDR_SZ (102UL) /* Outside the allowable range, but still fits in 4 bits when compressed */
 
@@ -186,8 +191,8 @@ fd_disco_shred_repair_shred_sig( int   completes,
                                  int   is_code,
                                  uint  shred_idx_or_data_cnt ) {
    ulong slot_ul                  = fd_ulong_min( slot, (ulong)UINT_MAX );
-   ulong shred_idx_or_data_cnt_ul = fd_ulong_min( (ulong)shred_idx_or_data_cnt, (ulong)FD_SHRED_MAX_PER_SLOT );
-   ulong fec_set_idx_ul           = fd_ulong_min( (ulong)fec_set_idx, (ulong)FD_SHRED_MAX_PER_SLOT );
+   ulong shred_idx_or_data_cnt_ul = fd_ulong_min( (ulong)shred_idx_or_data_cnt, (ulong)FD_SHRED_BLK_MAX );
+   ulong fec_set_idx_ul           = fd_ulong_min( (ulong)fec_set_idx, (ulong)FD_SHRED_BLK_MAX );
    ulong completes_ul             = !!completes;
    ulong is_code_ul               = !!is_code;
 
@@ -212,8 +217,8 @@ FD_FN_CONST static inline uint  fd_disco_shred_repair_shred_sig_data_cnt   ( ulo
 FD_FN_CONST static inline ulong
 fd_disco_shred_repair_fec_sig( ulong slot, uint fec_set_idx, uint data_cnt, int is_slot_complete, int is_batch_complete ) {
   ulong slot_ul          = fd_ulong_min( slot, (ulong)UINT_MAX );
-  ulong fec_set_idx_ul   = fd_ulong_min( (ulong)fec_set_idx, (ulong)FD_SHRED_MAX_PER_SLOT );
-  ulong data_cnt_ul      = fd_ulong_min( (ulong)data_cnt, (ulong)FD_SHRED_MAX_PER_SLOT );
+  ulong fec_set_idx_ul   = fd_ulong_min( (ulong)fec_set_idx, (ulong)FD_SHRED_BLK_MAX );
+  ulong data_cnt_ul      = fd_ulong_min( (ulong)data_cnt, (ulong)FD_SHRED_BLK_MAX );
   ulong is_slot_complete_ul = !!is_slot_complete;
   ulong is_batch_complete_ul = !!is_batch_complete;
   return slot_ul << 32 | fec_set_idx_ul << 17 | data_cnt_ul << 2 | is_slot_complete_ul << 1 | is_batch_complete_ul;
@@ -242,7 +247,7 @@ fd_disco_repair_replay_sig( ulong slot, uint data_cnt, ushort parent_off, int sl
    | [32, 63]  | [17, 31]      | [1, 16]         | [0]
   */
   ulong slot_ul          = fd_ulong_min( slot, (ulong)UINT_MAX );
-  ulong data_cnt_ul      = fd_ulong_min( (ulong)data_cnt, (ulong)FD_SHRED_MAX_PER_SLOT );
+  ulong data_cnt_ul      = fd_ulong_min( (ulong)data_cnt, (ulong)FD_SHRED_BLK_MAX );
   ulong parent_off_ul    = (ulong)parent_off;
   ulong slot_complete_ul = !!slot_complete;
   return slot_ul << 32 | data_cnt_ul << 17 | parent_off_ul << 1 | slot_complete_ul;

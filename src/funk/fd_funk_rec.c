@@ -47,7 +47,7 @@ fd_funk_rec_query_try( fd_funk_t *               funk,
   }
   fd_funk_rec_key_copy( pair->key, key );
   for(;;) {
-    int err = fd_funk_rec_map_query_try( &rec_map, pair, NULL, query );
+    int err = fd_funk_rec_map_query_try( &rec_map, pair, NULL, query, 0 );
     if( err == FD_MAP_SUCCESS )   break;
     if( err == FD_MAP_ERR_KEY )   return NULL;
     if( err == FD_MAP_ERR_AGAIN ) continue;
@@ -145,7 +145,7 @@ fd_funk_rec_query_copy( fd_funk_t *               funk,
   ulong last_copy_sz = 0;
   for(;;) {
     fd_funk_rec_query_t query[1];
-    int err = fd_funk_rec_map_query_try( &rec_map, pair, NULL, query );
+    int err = fd_funk_rec_map_query_try( &rec_map, pair, NULL, query, 0 );
     if( err == FD_MAP_ERR_KEY )   {
       if( last_copy ) fd_valloc_free( valloc, last_copy );
       return NULL;
@@ -215,12 +215,14 @@ fd_funk_rec_prepare( fd_funk_t *               funk,
       rec->txn_cidx = fd_funk_txn_cidx( FD_FUNK_TXN_IDX_NULL );
       prepare->rec_head_idx = &funk->rec_head_idx;
       prepare->rec_tail_idx = &funk->rec_tail_idx;
+      prepare->txn_lock     = &funk->lock;
     } else {
       fd_funk_txn_xid_copy( rec->pair.xid, &txn->xid );
       fd_funk_txn_pool_t txn_pool = fd_funk_txn_pool( funk, prepare->wksp );
       rec->txn_cidx = fd_funk_txn_cidx( (ulong)( txn - txn_pool.ele ) );
       prepare->rec_head_idx = &txn->rec_head_idx;
       prepare->rec_tail_idx = &txn->rec_tail_idx;
+      prepare->txn_lock     = &txn->lock;
     }
     fd_funk_rec_key_copy( rec->pair.key, key );
     fd_funk_val_init( rec );
@@ -242,8 +244,8 @@ fd_funk_rec_publish( fd_funk_rec_prepare_t * prepare ) {
   fd_funk_rec_map_t rec_map = fd_funk_rec_map( prepare->funk, prepare->wksp );
   fd_funk_rec_pool_t rec_pool = fd_funk_rec_pool( prepare->funk, prepare->wksp );
 
-  /* We need a global lock to protect the prev/next update */
-  fd_funk_rec_pool_lock( &rec_pool, 1 );
+  /* Lock the txn */
+  while( FD_ATOMIC_CAS( prepare->txn_lock, 0, 1 ) ) FD_SPIN_PAUSE();
 
   uint rec_prev_idx;
   uint rec_idx  = (uint)( rec - rec_pool.ele );
@@ -261,7 +263,7 @@ fd_funk_rec_publish( fd_funk_rec_prepare_t * prepare ) {
     FD_LOG_CRIT(( "fd_funk_rec_map_insert failed" ));
   }
 
-  fd_funk_rec_pool_unlock( &rec_pool );
+  FD_VOLATILE( *prepare->txn_lock ) = 0;
 }
 
 void
@@ -329,7 +331,14 @@ fd_funk_rec_hard_remove( fd_funk_t *               funk,
   }
   fd_funk_rec_key_copy( pair->key, key );
 
-  fd_funk_rec_pool_lock( &rec_pool, 1 );
+  uchar * lock = NULL;
+  if( txn==NULL ) {
+    lock = &funk->lock;
+  } else {
+    lock = &txn->lock;
+  }
+
+  while( FD_ATOMIC_CAS( lock, 0, 1 ) ) FD_SPIN_PAUSE();
 
   fd_funk_rec_t * rec = NULL;
   for(;;) {
@@ -337,7 +346,7 @@ fd_funk_rec_hard_remove( fd_funk_t *               funk,
     int err = fd_funk_rec_map_remove( &rec_map, pair, NULL, rec_query, FD_MAP_FLAG_BLOCKING );
     if( FD_UNLIKELY( err == FD_MAP_ERR_AGAIN ) ) continue;
     if( err == FD_MAP_ERR_KEY ) {
-      fd_funk_rec_pool_unlock( &rec_pool );
+      FD_VOLATILE( *lock ) = 0;
       return;
     }
     if( FD_UNLIKELY( err != FD_MAP_SUCCESS ) ) FD_LOG_CRIT(( "map corruption" ));
@@ -348,17 +357,18 @@ fd_funk_rec_hard_remove( fd_funk_t *               funk,
   uint prev_idx = rec->prev_idx;
   uint next_idx = rec->next_idx;
   if( txn == NULL ) {
-    if( fd_funk_rec_idx_is_null( prev_idx ) ) funk->rec_head_idx =                next_idx;
-    else                                         rec_pool.ele[ prev_idx ].next_idx = next_idx;
-    if( fd_funk_rec_idx_is_null( next_idx ) ) funk->rec_tail_idx =                prev_idx;
-    else                                         rec_pool.ele[ next_idx ].prev_idx = prev_idx;
+    if( fd_funk_rec_idx_is_null( prev_idx ) ) funk->rec_head_idx                = next_idx;
+    else                                      rec_pool.ele[ prev_idx ].next_idx = next_idx;
+    if( fd_funk_rec_idx_is_null( next_idx ) ) funk->rec_tail_idx                = prev_idx;
+    else                                      rec_pool.ele[ next_idx ].prev_idx = prev_idx;
   } else {
-    if( fd_funk_rec_idx_is_null( prev_idx ) ) txn->rec_head_idx =                next_idx;
-    else                                         rec_pool.ele[ prev_idx ].next_idx = next_idx;
-    if( fd_funk_rec_idx_is_null( next_idx ) ) txn->rec_tail_idx =                prev_idx;
-    else                                         rec_pool.ele[ next_idx ].prev_idx = prev_idx;
+    if( fd_funk_rec_idx_is_null( prev_idx ) ) txn->rec_head_idx                 = next_idx;
+    else                                      rec_pool.ele[ prev_idx ].next_idx = next_idx;
+    if( fd_funk_rec_idx_is_null( next_idx ) ) txn->rec_tail_idx                 = prev_idx;
+    else                                      rec_pool.ele[ next_idx ].prev_idx = prev_idx;
   }
-  fd_funk_rec_pool_unlock( &rec_pool );
+
+  FD_VOLATILE( *lock ) = 0;
 
   fd_funk_val_flush( rec, alloc, wksp );
   fd_funk_rec_pool_release( &rec_pool, rec, 1 );
@@ -400,7 +410,7 @@ fd_funk_rec_remove( fd_funk_t *               funk,
   fd_funk_rec_key_copy( pair->key, key );
   fd_funk_rec_query_t query[ 1 ];
   for(;;) {
-    int err = fd_funk_rec_map_query_try( &rec_map, pair, NULL, query );
+    int err = fd_funk_rec_map_query_try( &rec_map, pair, NULL, query, 0 );
     if( err == FD_MAP_SUCCESS )   break;
     if( err == FD_MAP_ERR_KEY )   return FD_FUNK_SUCCESS;
     if( err == FD_MAP_ERR_AGAIN ) continue;

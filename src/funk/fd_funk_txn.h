@@ -48,6 +48,7 @@ struct __attribute__((aligned(FD_FUNK_TXN_ALIGN))) fd_funk_txn_private {
 
   uint  rec_head_idx;      /* Record map index of the first record, FD_FUNK_REC_IDX_NULL if none (from oldest to youngest) */
   uint  rec_tail_idx;      /* "                       last          " */
+  uchar lock;              /* Internal use by funk for sychronizing modifications to txn object */
 };
 
 typedef struct fd_funk_txn_private fd_funk_txn_t;
@@ -144,7 +145,7 @@ fd_funk_txn_query( fd_funk_txn_xid_t const * xid,
                    fd_funk_txn_map_t * map ) {
   do {
     fd_funk_txn_map_query_t query[1];
-    if( FD_UNLIKELY( fd_funk_txn_map_query_try( map, xid, NULL, query ) ) ) return NULL;
+    if( FD_UNLIKELY( fd_funk_txn_map_query_try( map, xid, NULL, query, 0 ) ) ) return NULL;
     fd_funk_txn_t * ele = fd_funk_txn_map_query_ele( query );
     if( FD_LIKELY( !fd_funk_txn_map_query_test( query ) ) ) return ele;
   } while( 1 );
