@@ -42,6 +42,11 @@ fd_blockstore_new( void * shmem,
     return NULL;
   }
 
+  if( FD_UNLIKELY( !fd_ulong_is_pow2( shred_max ) ) ) {
+    shred_max = fd_ulong_pow2_up( shred_max );
+    FD_LOG_WARNING(( "blockstore implementation requires shred_max to be a power of two, rounding it up to %lu", shred_max ));
+  }
+
   fd_memset( blockstore_shmem, 0, fd_blockstore_footprint( shred_max, block_max, idx_max, txn_max ) );
 
   int   lg_idx_max   = fd_ulong_find_msb( fd_ulong_pow2_up( idx_max ) );
@@ -51,7 +56,7 @@ fd_blockstore_new( void * shmem,
   void * shreds     = FD_SCRATCH_ALLOC_APPEND( l, alignof(fd_buf_shred_t),        sizeof(fd_buf_shred_t) * shred_max );
   void * shred_pool = FD_SCRATCH_ALLOC_APPEND( l, fd_buf_shred_pool_align(),      fd_buf_shred_pool_footprint() );
   void * shred_map  = FD_SCRATCH_ALLOC_APPEND( l, fd_buf_shred_map_align(),       fd_buf_shred_map_footprint( shred_max ) );
-  void * blocks     = FD_SCRATCH_ALLOC_APPEND( l, alignof(fd_block_info_t),        sizeof(fd_block_info_t) * block_max );
+  void * blocks     = FD_SCRATCH_ALLOC_APPEND( l, alignof(fd_block_info_t),       sizeof(fd_block_info_t) * block_max );
   void * block_map  = FD_SCRATCH_ALLOC_APPEND( l, fd_block_map_align(),           fd_block_map_footprint( block_max, lock_cnt, BLOCK_INFO_PROBE_CNT ) );
   void * block_idx  = FD_SCRATCH_ALLOC_APPEND( l, fd_block_idx_align(),           fd_block_idx_footprint( lg_idx_max ) );
   void * slot_deque = FD_SCRATCH_ALLOC_APPEND( l, fd_slot_deque_align(),          fd_slot_deque_footprint( block_max ) );
@@ -336,7 +341,7 @@ fd_txn_key_hash( fd_txn_key_t const * k, ulong seed ) {
    lock due to txn_map access. */
 void
 fd_blockstore_slot_remove( fd_blockstore_t * blockstore, ulong slot ) {
-  FD_LOG_NOTICE(( "[%s] slot: %lu", __func__, slot ));
+  FD_LOG_DEBUG(( "[%s] slot: %lu", __func__, slot ));
 
   /* It is not safe to remove a replaying block. */
   fd_block_map_query_t query[1] = { 0 };
@@ -468,10 +473,6 @@ fd_blockstore_publish( fd_blockstore_t * blockstore,
 
 void
 fd_blockstore_shred_remove( fd_blockstore_t * blockstore, ulong slot, uint idx ) {
-  // if ( fd_buf_shred_pool_verify( blockstore->shred_pool ) != FD_POOL_SUCCESS || fd_buf_shred_map_verify ( blockstore->shred_map  ) != FD_MAP_SUCCESS ) {
-  //   FD_LOG_NOTICE(( "slot %lu idx %u", slot, idx ));
-  //   __asm__("int $3");
-  // }
   fd_shred_key_t key = { slot, idx };
 
   fd_buf_shred_map_query_t query[1] = { 0 };
@@ -805,26 +806,7 @@ fd_blockstore_slice_query( fd_blockstore_t * blockstore,
                            ulong *           buf_sz ) {
   /* verify that the batch idxs provided is at batch boundaries*/
 
-  int err = FD_MAP_ERR_AGAIN;
-  int invalid_idx = 0;
-  while( err == FD_MAP_ERR_AGAIN ){
-    fd_block_map_query_t quer[1] = { 0 };
-    err = fd_block_map_query_try( blockstore->block_map, &slot, NULL, quer, 0 );
-    fd_block_info_t * query = fd_block_map_query_ele( quer );
-    if( FD_UNLIKELY( err == FD_MAP_ERR_KEY ) ) return FD_BLOCKSTORE_ERR_SLOT_MISSING;
-    if( FD_UNLIKELY( err == FD_MAP_ERR_AGAIN ) ) continue;
-    fd_block_set_t * data_complete_idxs = query->data_complete_idxs;
-    if ( ( start_idx > 0 && !fd_block_set_test( data_complete_idxs, start_idx - 1 ))
-         || start_idx > query->slot_complete_idx
-         || !fd_block_set_test( data_complete_idxs, end_idx ) ) {
-      invalid_idx = 1;
-    }
-    err = fd_block_map_query_test( quer );
-  }
-  if( FD_UNLIKELY( invalid_idx ) ) {
-    FD_LOG_WARNING(( "[%s] invalid idxs: (%lu, %u, %u)", __func__, slot, start_idx, end_idx ));
-    return FD_BLOCKSTORE_ERR_SHRED_INVALID;
-  }
+  // FD_LOG_NOTICE(( "querying for %lu %u %u", slot, start_idx, end_idx ));
 
   ulong off = 0;
   for(uint idx = start_idx; idx <= end_idx; idx++) {

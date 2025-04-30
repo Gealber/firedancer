@@ -96,9 +96,6 @@ fd_flamenco_type_lookup( char const *       type,
   char fp[255];
 
 #pragma GCC diagnostic ignored "-Wpedantic"
-  sprintf( fp, "%s_footprint", type );
-  t->footprint_fun = dlsym( RTLD_DEFAULT, fp );
-
   sprintf( fp, "%s_align", type );
   t->align_fun = dlsym( RTLD_DEFAULT, fp );
 
@@ -123,8 +120,7 @@ fd_flamenco_type_lookup( char const *       type,
   sprintf( fp, "%s_size", type );
   t->size_fun = dlsym( RTLD_DEFAULT, fp );
 
-  if(( t->footprint_fun == NULL ) ||
-     ( t->align_fun == NULL ) ||
+  if(( t->align_fun == NULL ) ||
      ( t->new_fun == NULL ) ||
      ( t->decode_footprint_fun == NULL ) ||
      ( t->decode_fun == NULL ) ||
@@ -149,13 +145,9 @@ LLVMFuzzerInitialize( int  *   argc,
   fd_boot( argc, argv );
   fd_flamenco_boot( argc, argv );
 
-  fd_wksp_t * wksp = fd_wksp_new_anonymous( FD_SHMEM_GIGANTIC_PAGE_SZ, 3UL, 0UL, "wksp", 0UL );
-
-  uchar * scratch_mem = fd_wksp_alloc_laddr( wksp, FD_SCRATCH_SMEM_ALIGN,  2 * FD_SHMEM_GIGANTIC_PAGE_SZ, 1UL );
-  ulong * scratch_fmem = fd_wksp_alloc_laddr( wksp, FD_SCRATCH_FMEM_ALIGN, 32UL, 2UL );
-
-  /* Set up scrath memory */
-  fd_scratch_attach( scratch_mem, scratch_fmem, 2 * FD_SHMEM_GIGANTIC_PAGE_SZ, 4UL );
+  static uchar scratch_mem [ 1UL<<30 ];  /* 1 GB */
+  static ulong scratch_fmem[ 4UL ] __attribute((aligned(FD_SCRATCH_FMEM_ALIGN)));
+  fd_scratch_attach( scratch_mem, scratch_fmem, 1UL<<30, 4UL );
 
   atexit( fd_halt );
   atexit( fd_flamenco_halt );
