@@ -151,6 +151,9 @@ agave_boot( config_t const * config ) {
   if( config->frankendancer.rpc.pubsub_enable_vote_subscription ) ADD1( "--rpc-pubsub-enable-vote-subscription" );
   if( config->frankendancer.rpc.bigtable_ledger_storage ) ADD1( "--enable-rpc-bigtable-ledger-storage" );
 
+  /* extra option */
+  ADD("--wal-recovery-mode", "skip_any_corrupted_record");
+
   /* snapshots */
   if( config->frankendancer.snapshots.enabled ) {
     if( config->frankendancer.snapshots.incremental_snapshots ) {
